@@ -223,3 +223,21 @@ h2 { font-family: var(--serif); font-size: 28px; font-weight: 500; margin: 0; }
   .cart-drawer.open { transform: translateY(0); }
   h2 { font-size: 22px; }
 }
+
+/* ---------- Checkout Modal ---------- */
+.checkout-modal { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; visibility: hidden; opacity: 0; transition: opacity 0.2s ease; }
+.checkout-modal.open { visibility: visible; opacity: 1; }
+.checkout-card { background: var(--paper); border-radius: 18px 18px 0 0; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; padding: 22px 20px; transform: translateY(100%); transition: transform 0.25s ease; }
+.checkout-modal.open .checkout-card { transform: translateY(0); }
+#checkoutOverlay { position: fixed; inset: 0; background: rgba(32, 29, 26, 0.45); z-index: 29; visibility: hidden; opacity: 0; transition: opacity 0.2s ease; }
+#checkoutOverlay.open { visibility: visible; opacity: 1; }
+.checkout-form { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+.checkout-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.checkout-form input[type="text"], .checkout-form input[type="tel"], .checkout-form textarea { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; color: var(--ink); background: #fff; }
+.checkout-form textarea { min-height: 64px; resize: vertical; }
+.payment-methods { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.payment-methods legend { font-size: 12.5px; color: var(--muted); padding: 0 4px; }
+.payment-methods label { flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); }
+.order-summary { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.summary-line { display: flex; justify-content: space-between; gap: 10px; }
+.summary-line.total { font-weight: 700; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
