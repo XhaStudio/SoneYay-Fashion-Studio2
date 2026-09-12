@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -51,6 +52,31 @@
     <div class="drawer-footer"><div class="total-row"><span>စုစုပေါင်းခွဲ</span><strong id="drawerTotal">$0</strong></div><button class="checkout-button" id="checkoutButton">ငွေရှင်းရန် ဆက်သွားပါ <span>→</span></button><p class="fine-print">အခွန်နှင့် ပို့ဆောင်ခကို ငွေရှင်းချိန်တွင် တွက်ချက်ပေးပါမည်။</p></div>
   </aside>
   <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <div class="checkout-modal" id="checkoutModal" aria-hidden="true">
+    <div class="checkout-card">
+      <div class="drawer-head"><div><p class="eyebrow">ငွေရှင်းရန်</p><h2>Checkout</h2></div><button class="close-button" id="closeCheckout" aria-label="ပိတ်ပါ">×</button></div>
+
+      <form id="checkoutForm" class="checkout-form">
+        <label>အမည်<input type="text" id="custName" required placeholder="သင့်အမည်" /></label>
+        <label>ဖုန်းနံပါတ်<input type="tel" id="custPhone" required placeholder="09xxxxxxxxx" /></label>
+        <label>လိပ်စာ<textarea id="custAddress" required placeholder="ပို့ဆောင်ရန်လိပ်စာ"></textarea></label>
+
+        <fieldset class="payment-methods">
+          <legend>ငွေပေးချေမှုနည်းလမ်း</legend>
+          <label><input type="radio" name="payment" value="COD" checked /> ငွေချေပြီးမှလက်ခံရန် (COD)</label>
+          <label><input type="radio" name="payment" value="KBZPay" /> KBZPay</label>
+          <label><input type="radio" name="payment" value="WavePay" /> WavePay</label>
+        </fieldset>
+
+        <div class="order-summary" id="checkoutSummary"></div>
+
+        <button type="submit" class="checkout-button" id="submitOrder">မှာယူမှု အတည်ပြုပါ <span>→</span></button>
+        <p class="fine-print" id="checkoutNote" hidden>ငွေလွှဲပြီးပါက Telegram bot သို့ receipt screenshot ပို့ပေးပါ။</p>
+      </form>
+    </div>
+  </div>
+  <div class="drawer-overlay" id="checkoutOverlay"></div>
   <div class="cart-bar" id="cartBar" aria-hidden="true"><div><span class="cart-summary-label"><span class="bag-dot"></span><strong id="cartItemCount">0 ပစ္စည်း</strong> အိတ်ထဲတွင်ရှိသည်</span><span class="cart-total" id="cartTotal">$0</span></div><button id="viewBag">အိတ်ကြည့်ရန် <span>→</span></button></div>
 
   <template id="productTemplate">
