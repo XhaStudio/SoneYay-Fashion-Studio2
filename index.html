@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f2ec" />
+  <title>SoneYay Fashion Studio | Curated fashion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="SoneYay Fashion Studio home"><span class="brand-mark">S</span><span>SoneYay Fashion Studio<span class="brand-dot">.</span></span></a>
+    <nav class="top-nav" aria-label="Primary navigation">
+      <a class="active" href="#shop">ဆိုင်</a>
+      <a href="#new">အသစ်များ</a>
+      <a href="#edit">ရွေးချယ်မှု</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-button" id="searchToggle" aria-label="ရှာဖွေရန်ဖွင့်ပါ">⌕</button>
+      <button class="bag-button" id="bagButton" aria-label="စျေးဝယ်အိတ်ဖွင့်ပါ">အိတ် <span id="bagCount">0</span></button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="intro" id="shop">
+      <div>
+        <p class="eyebrow">စက်တင်ဘာ ရွေးချယ်မှု <span></span></p>
+        <h1>ကိုယ်ပိုင်စတိုင်ရှိသော<br /><em>ဖက်ရှင်များ။</em></h1>
+      </div>
+      <p class="intro-copy">ကမ္ဘာတစ်ဝှမ်းမှ လွတ်လပ်သောအမှတ်တံဆိပ်များ၏ ထူးခြားပြီး နေ့စဉ်ဝတ်ဆင်ရန်သင့်တော်သော ဖက်ရှင်များ။</p>
+    </section>
+
+    <section class="shop-toolbar" aria-label="ပစ္စည်းစာရင်း ထိန်းချုပ်မှုများ">
+      <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="Product categories"></div>
+      <div class="toolbar-right">
+        <label class="search-field" id="searchField"><span>⌕</span><input id="searchInput" type="search" placeholder="ပစ္စည်းရှာရန်" aria-label="ပစ္စည်းရှာရန်" /></label>
+        <label class="sort-field">စီရန် <select id="sortSelect" aria-label="ပစ္စည်းများစီရန်"><option value="featured">အထူးရွေးချယ်ထားသော</option><option value="price-low">စျေးနှုန်း နိမ့်မှမြင့်</option><option value="price-high">စျေးနှုန်း မြင့်မှနိမ့်</option></select></label>
+      </div>
+    </section>
+
+    <section class="catalog" id="catalog" aria-live="polite"></section>
+    <p class="empty-state" id="emptyState" hidden>ပစ္စည်းမတွေ့ပါ။ အခြားစကားလုံးဖြင့် ထပ်ရှာကြည့်ပါ။</p>
+  </main>
+
+  <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="စျေးဝယ်အိတ်">
+    <div class="drawer-head"><div><p class="eyebrow">သင်ရွေးချယ်ထားသည်များ</p><h2>စျေးဝယ်အိတ်</h2></div><button class="close-button" id="closeBag" aria-label="စျေးဝယ်အိတ်ပိတ်ပါ">×</button></div>
+    <div class="drawer-items" id="drawerItems"></div>
+    <div class="drawer-footer"><div class="total-row"><span>စုစုပေါင်းခွဲ</span><strong id="drawerTotal">$0</strong></div><button class="checkout-button" id="checkoutButton">ငွေရှင်းရန် ဆက်သွားပါ <span>→</span></button><p class="fine-print">အခွန်နှင့် ပို့ဆောင်ခကို ငွေရှင်းချိန်တွင် တွက်ချက်ပေးပါမည်။</p></div>
+  </aside>
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <div class="cart-bar" id="cartBar" aria-hidden="true"><div><span class="cart-summary-label"><span class="bag-dot"></span><strong id="cartItemCount">0 ပစ္စည်း</strong> အိတ်ထဲတွင်ရှိသည်</span><span class="cart-total" id="cartTotal">$0</span></div><button id="viewBag">အိတ်ကြည့်ရန် <span>→</span></button></div>
+
+  <template id="productTemplate">
+    <article class="product-card">
+      <div class="product-image-wrap"><img class="product-image" alt="" /><span class="product-badge" hidden>New</span><span class="product-count" hidden>0</span></div>
+      <div class="product-details"><div><h3 class="product-name"></h3><p class="product-meta"></p></div><strong class="product-price"></strong></div>
+      <div class="product-actions"><button class="add-button">အိတ်ထဲထည့်ရန် <span>+</span></button><div class="quantity-controls" hidden><button class="quantity-button decrease" aria-label="အရေအတွက်လျှော့ရန်">−</button><span class="quantity-value">1</span><button class="quantity-button increase" aria-label="အရေအတွက်တိုးရန်">+</button></div></div>
+    </article>
+  </template>
+  <script src="./app.js"></script>
+</body>
+</html>
