@@ -108,7 +108,102 @@ function setDrawer(open: boolean): void {
   cartDrawer.classList.toggle("open", open);
   drawerOverlay.classList.toggle("open", open);
   cartDrawer.setAttribute("aria-hidden", String(!open));
+  if (!open) showCheckoutStep();
 }
+
+type PaymentMethodId = "kbzpay" | "wavemoney";
+const paymentAccounts: Record<PaymentMethodId, { label: string; number: string }> = {
+  kbzpay: { label: "KBZPay", number: "09-750 123 456" },
+  wavemoney: { label: "WaveMoney", number: "09-961 234 567" }
+};
+let selectedPaymentMethod: PaymentMethodId = "kbzpay";
+let selectedScreenshot: File | null = null;
+
+const checkoutStep = document.querySelector<HTMLDivElement>("#checkoutStep")!;
+const paymentStep = document.querySelector<HTMLDivElement>("#paymentStep")!;
+const checkoutButton = document.querySelector<HTMLButtonElement>("#checkoutButton")!;
+const backToCartButton = document.querySelector<HTMLButtonElement>("#backToCartButton")!;
+const paymentMethodButtons = document.querySelectorAll<HTMLButtonElement>(".payment-method");
+const paymentAccountName = document.querySelector<HTMLElement>("#paymentAccountName")!;
+const paymentAccountNumber = document.querySelector<HTMLElement>("#paymentAccountNumber")!;
+const copyAccountButton = document.querySelector<HTMLButtonElement>("#copyAccountButton")!;
+const dropzone = document.querySelector<HTMLLabelElement>("#dropzone")!;
+const dropzoneEmpty = document.querySelector<HTMLDivElement>("#dropzoneEmpty")!;
+const dropzoneFilled = document.querySelector<HTMLDivElement>("#dropzoneFilled")!;
+const dropzonePreview = document.querySelector<HTMLImageElement>("#dropzonePreview")!;
+const dropzoneFileName = document.querySelector<HTMLElement>("#dropzoneFileName")!;
+const paymentScreenshotInput = document.querySelector<HTMLInputElement>("#paymentScreenshot")!;
+const removeScreenshotButton = document.querySelector<HTMLButtonElement>("#removeScreenshotButton")!;
+const submitPaymentButton = document.querySelector<HTMLButtonElement>("#submitPaymentButton")!;
+
+function showCheckoutStep(): void { checkoutStep.hidden = false; paymentStep.hidden = true; }
+function showPaymentStep(): void { checkoutStep.hidden = true; paymentStep.hidden = false; }
+
+function setPaymentMethod(method: PaymentMethodId): void {
+  selectedPaymentMethod = method;
+  const account = paymentAccounts[method];
+  paymentAccountName.textContent = account.label;
+  paymentAccountNumber.textContent = account.number;
+  paymentMethodButtons.forEach((button) => {
+    const isActive = button.dataset.method === method;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+}
+
+function setScreenshot(file: File): void {
+  if (!file.type.startsWith("image/")) return;
+  selectedScreenshot = file;
+  const reader = new FileReader();
+  reader.onload = () => { dropzonePreview.src = String(reader.result); };
+  reader.readAsDataURL(file);
+  dropzoneFileName.textContent = file.name;
+  dropzoneEmpty.hidden = true;
+  dropzoneFilled.hidden = false;
+  submitPaymentButton.disabled = false;
+}
+
+function clearScreenshot(): void {
+  selectedScreenshot = null;
+  paymentScreenshotInput.value = "";
+  dropzoneEmpty.hidden = false;
+  dropzoneFilled.hidden = true;
+  submitPaymentButton.disabled = true;
+}
+
+checkoutButton.addEventListener("click", showPaymentStep);
+backToCartButton.addEventListener("click", showCheckoutStep);
+paymentMethodButtons.forEach((button) => button.addEventListener("click", () => setPaymentMethod(button.dataset.method as PaymentMethodId)));
+copyAccountButton.addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(paymentAccountNumber.textContent || ""); } catch { /* clipboard unavailable */ }
+  copyAccountButton.classList.add("copied");
+  copyAccountButton.textContent = "ကူးယူပြီးပါပြီ";
+  setTimeout(() => { copyAccountButton.classList.remove("copied"); copyAccountButton.textContent = "ကူးယူရန်"; }, 1600);
+});
+paymentScreenshotInput.addEventListener("change", () => {
+  if (paymentScreenshotInput.files && paymentScreenshotInput.files[0]) setScreenshot(paymentScreenshotInput.files[0]);
+});
+removeScreenshotButton.addEventListener("click", (event) => { event.preventDefault(); clearScreenshot(); });
+dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("dragover"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  dropzone.classList.remove("dragover");
+  const file = event.dataTransfer?.files?.[0];
+  if (file) setScreenshot(file);
+});
+dropzone.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") { event.preventDefault(); paymentScreenshotInput.click(); }
+});
+submitPaymentButton.addEventListener("click", () => {
+  if (!selectedScreenshot) return;
+  alert(`${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
+  cart = {};
+  renderProducts();
+  renderCart();
+  clearScreenshot();
+  setDrawer(false);
+});
 
 categoryTabs.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-category]");
@@ -124,7 +219,6 @@ document.querySelector("#viewBag")!.addEventListener("click", () => setDrawer(tr
 document.querySelector("#closeBag")!.addEventListener("click", () => setDrawer(false));
 drawerOverlay.addEventListener("click", () => setDrawer(false));
 document.querySelector("#searchToggle")!.addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
-document.querySelector("#checkoutButton")!.addEventListener("click", () => alert("ငွေရှင်းခြင်းကို Telegram နှင့် ချိတ်ဆက်ပေးပါမည်။"));
 
 renderCategories();
 renderProducts();
