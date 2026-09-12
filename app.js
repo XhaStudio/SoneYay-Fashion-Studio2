@@ -38,58 +38,74 @@ function renderCart() {
   drawerItems.innerHTML = details.length ? details.map(({ product, quantity }) => `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${money(product.price)}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`).join("") : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
   drawerItems.querySelectorAll("button[data-id]").forEach((button) => button.addEventListener("click", () => updateQuantity(Number(button.dataset.id), Number(button.dataset.change))));
 }
-function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOverlay.classList.toggle("open", open); cartDrawer.setAttribute("aria-hidden", String(!open)); }
+function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOverlay.classList.toggle("open", open); cartDrawer.setAttribute("aria-hidden", String(!open)); if (!open) showCheckoutStep(); }
+
+const paymentAccounts = {
+  kbzpay: { label: "KBZPay", number: "09-750 123 456" },
+  wavemoney: { label: "WaveMoney", number: "09-961 234 567" }
+};
+let selectedPaymentMethod = "kbzpay";
+let selectedScreenshot = null;
+
+const checkoutStep = $("#checkoutStep"), paymentStep = $("#paymentStep"), checkoutButton = $("#checkoutButton"), backToCartButton = $("#backToCartButton");
+const paymentMethodButtons = document.querySelectorAll(".payment-method");
+const paymentAccountName = $("#paymentAccountName"), paymentAccountNumber = $("#paymentAccountNumber"), copyAccountButton = $("#copyAccountButton");
+const dropzone = $("#dropzone"), dropzoneEmpty = $("#dropzoneEmpty"), dropzoneFilled = $("#dropzoneFilled"), dropzonePreview = $("#dropzonePreview"), dropzoneFileName = $("#dropzoneFileName");
+const paymentScreenshotInput = $("#paymentScreenshot"), removeScreenshotButton = $("#removeScreenshotButton"), submitPaymentButton = $("#submitPaymentButton");
+
+function showCheckoutStep() { checkoutStep.hidden = false; paymentStep.hidden = true; }
+function showPaymentStep() { checkoutStep.hidden = true; paymentStep.hidden = false; }
+
+function setPaymentMethod(method) {
+  selectedPaymentMethod = method;
+  const account = paymentAccounts[method];
+  paymentAccountName.textContent = account.label;
+  paymentAccountNumber.textContent = account.number;
+  paymentMethodButtons.forEach((button) => { const isActive = button.dataset.method === method; button.classList.toggle("active", isActive); button.setAttribute("aria-selected", String(isActive)); });
+}
+
+function setScreenshot(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  selectedScreenshot = file;
+  const reader = new FileReader();
+  reader.onload = () => { dropzonePreview.src = String(reader.result); };
+  reader.readAsDataURL(file);
+  dropzoneFileName.textContent = file.name;
+  dropzoneEmpty.hidden = true; dropzoneFilled.hidden = false;
+  submitPaymentButton.disabled = false;
+}
+
+function clearScreenshot() {
+  selectedScreenshot = null; paymentScreenshotInput.value = "";
+  dropzoneEmpty.hidden = false; dropzoneFilled.hidden = true;
+  submitPaymentButton.disabled = true;
+}
+
+checkoutButton.addEventListener("click", showPaymentStep);
+backToCartButton.addEventListener("click", showCheckoutStep);
+paymentMethodButtons.forEach((button) => button.addEventListener("click", () => setPaymentMethod(button.dataset.method)));
+copyAccountButton.addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(paymentAccountNumber.textContent || ""); } catch { /* clipboard unavailable */ }
+  copyAccountButton.classList.add("copied"); copyAccountButton.textContent = "ကူးယူပြီးပါပြီ";
+  setTimeout(() => { copyAccountButton.classList.remove("copied"); copyAccountButton.textContent = "ကူးယူရန်"; }, 1600);
+});
+paymentScreenshotInput.addEventListener("change", () => { if (paymentScreenshotInput.files && paymentScreenshotInput.files[0]) setScreenshot(paymentScreenshotInput.files[0]); });
+removeScreenshotButton.addEventListener("click", (event) => { event.preventDefault(); clearScreenshot(); });
+dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("dragover"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", (event) => {
+  event.preventDefault(); dropzone.classList.remove("dragover");
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  if (file) setScreenshot(file);
+});
+dropzone.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); paymentScreenshotInput.click(); } });
+submitPaymentButton.addEventListener("click", () => {
+  if (!selectedScreenshot) return;
+  alert(`${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
+  cart = {}; renderProducts(); renderCart(); clearScreenshot(); setDrawer(false);
+});
 categoryTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-category]"); if (!button) return; activeCategory = button.dataset.category; renderCategories(); renderProducts(); });
 searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
 $("#bagButton").addEventListener("click", () => setDrawer(true)); $("#viewBag").addEventListener("click", () => setDrawer(true)); $("#closeBag").addEventListener("click", () => setDrawer(false)); drawerOverlay.addEventListener("click", () => setDrawer(false));
 $("#searchToggle").addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
-
-// ---------------- Checkout ----------------
-const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); }
-
-const checkoutModal = $("#checkoutModal"), checkoutOverlay = $("#checkoutOverlay"), checkoutForm = $("#checkoutForm"), checkoutSummary = $("#checkoutSummary"), checkoutNote = $("#checkoutNote");
-
-function setCheckout(open) {
-  checkoutModal.classList.toggle("open", open); checkoutOverlay.classList.toggle("open", open); checkoutModal.setAttribute("aria-hidden", String(!open));
-  if (open) renderCheckoutSummary();
-}
-function renderCheckoutSummary() {
-  const details = cartDetails(), total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  checkoutSummary.innerHTML = details.map(({ product, quantity }) => `<div class="summary-line"><span>${product.name} (${product.meta}) x${quantity}</span><span>${money(product.price * quantity)}</span></div>`).join("") + `<div class="summary-line total"><span>Total</span><span>${money(total)}</span></div>`;
-}
-
-$("#checkoutButton").addEventListener("click", () => { if (Object.keys(cart).length === 0) return; setDrawer(false); setCheckout(true); });
-$("#closeCheckout").addEventListener("click", () => setCheckout(false));
-checkoutOverlay.addEventListener("click", () => setCheckout(false));
-
-checkoutForm.querySelectorAll('input[name="payment"]').forEach((radio) => radio.addEventListener("change", () => {
-  checkoutNote.hidden = radio.value === "COD" || !radio.checked;
-}));
-
-checkoutForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const details = cartDetails();
-  if (details.length === 0) return;
-  const total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const payment = checkoutForm.querySelector('input[name="payment"]:checked').value;
-  const order = {
-    type: "order",
-    items: details.map(({ product, quantity }) => ({ name: product.name, meta: product.meta, quantity, price: product.price })),
-    total,
-    payment,
-    customer: { name: $("#custName").value.trim(), phone: $("#custPhone").value.trim(), address: $("#custAddress").value.trim() },
-  };
-
-  if (tg) {
-    tg.sendData(JSON.stringify(order));
-  } else {
-    alert("Telegram WebApp မတွေ့ပါ။ Telegram appထဲမှ ဤစျေးဆိုင်ကို ဖွင့်ပါ။");
-    return;
-  }
-
-  cart = {}; renderProducts(); renderCart(); setCheckout(false);
-  if (tg) tg.close();
-});
-
 renderCategories(); renderProducts(); renderCart();
