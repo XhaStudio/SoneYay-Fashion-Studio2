@@ -42,5 +42,54 @@ function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOver
 categoryTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-category]"); if (!button) return; activeCategory = button.dataset.category; renderCategories(); renderProducts(); });
 searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
 $("#bagButton").addEventListener("click", () => setDrawer(true)); $("#viewBag").addEventListener("click", () => setDrawer(true)); $("#closeBag").addEventListener("click", () => setDrawer(false)); drawerOverlay.addEventListener("click", () => setDrawer(false));
-$("#searchToggle").addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); }); $("#checkoutButton").addEventListener("click", () => alert("ငွေရှင်းခြင်းကို Telegram နှင့် ချိတ်ဆက်ပေးပါမည်။"));
+$("#searchToggle").addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
+
+// ---------------- Checkout ----------------
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
+const checkoutModal = $("#checkoutModal"), checkoutOverlay = $("#checkoutOverlay"), checkoutForm = $("#checkoutForm"), checkoutSummary = $("#checkoutSummary"), checkoutNote = $("#checkoutNote");
+
+function setCheckout(open) {
+  checkoutModal.classList.toggle("open", open); checkoutOverlay.classList.toggle("open", open); checkoutModal.setAttribute("aria-hidden", String(!open));
+  if (open) renderCheckoutSummary();
+}
+function renderCheckoutSummary() {
+  const details = cartDetails(), total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  checkoutSummary.innerHTML = details.map(({ product, quantity }) => `<div class="summary-line"><span>${product.name} (${product.meta}) x${quantity}</span><span>${money(product.price * quantity)}</span></div>`).join("") + `<div class="summary-line total"><span>Total</span><span>${money(total)}</span></div>`;
+}
+
+$("#checkoutButton").addEventListener("click", () => { if (Object.keys(cart).length === 0) return; setDrawer(false); setCheckout(true); });
+$("#closeCheckout").addEventListener("click", () => setCheckout(false));
+checkoutOverlay.addEventListener("click", () => setCheckout(false));
+
+checkoutForm.querySelectorAll('input[name="payment"]').forEach((radio) => radio.addEventListener("change", () => {
+  checkoutNote.hidden = radio.value === "COD" || !radio.checked;
+}));
+
+checkoutForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const details = cartDetails();
+  if (details.length === 0) return;
+  const total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const payment = checkoutForm.querySelector('input[name="payment"]:checked').value;
+  const order = {
+    type: "order",
+    items: details.map(({ product, quantity }) => ({ name: product.name, meta: product.meta, quantity, price: product.price })),
+    total,
+    payment,
+    customer: { name: $("#custName").value.trim(), phone: $("#custPhone").value.trim(), address: $("#custAddress").value.trim() },
+  };
+
+  if (tg) {
+    tg.sendData(JSON.stringify(order));
+  } else {
+    alert("Telegram WebApp မတွေ့ပါ။ Telegram appထဲမှ ဤစျေးဆိုင်ကို ဖွင့်ပါ။");
+    return;
+  }
+
+  cart = {}; renderProducts(); renderCart(); setCheckout(false);
+  if (tg) tg.close();
+});
+
 renderCategories(); renderProducts(); renderCart();
