@@ -43,6 +43,14 @@ function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOver
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); }
 
+function notify(msg) {
+  console.log("[notify]", msg);
+  try {
+    if (tg && tg.showAlert) { tg.showAlert(msg); return; }
+  } catch (err) { console.error("showAlert failed:", err); }
+  try { alert(msg); } catch (err) { console.error("alert failed:", err); }
+}
+
 const paymentAccounts = {
   kbzpay: { label: "KBZPay", number: "09-750 123 456" },
   wavemoney: { label: "WaveMoney", number: "09-961 234 567" }
@@ -101,7 +109,7 @@ function clearScreenshot() {
 
 checkoutButton.addEventListener("click", () => {
   if (!custNameInput.value.trim() || !custPhoneInput.value.trim() || !custAddressInput.value.trim()) {
-    alert("ကျေးဇူးပြု၍ အမည်၊ ဖုန်းနံပါတ်နှင့် လိပ်စာ ဖြည့်ပေးပါ။");
+    notify("ကျေးဇူးပြု၍ အမည်၊ ဖုန်းနံပါတ်နှင့် လိပ်စာ ဖြည့်ပေးပါ။");
     return;
   }
   showPaymentStep();
@@ -143,17 +151,27 @@ submitPaymentButton.addEventListener("click", () => {
   if (Object.keys(cart).length === 0) return;
   const order = buildOrder();
 
+  // --- Debug: remove this block once sendData is confirmed working ---
+  console.log("tg object:", tg);
+  console.log("Order payload:", order);
+  notify("DEBUG: tg exists = " + Boolean(tg) + " | payment = " + order.payment);
+  // ---------------------------------------------------------------
+
   if (!tg) {
-    alert("Telegram App ထဲမှသာ မှာယူ၍ရပါမည်။ Telegram ထဲတွင် ဤဆိုင်ကို ပြန်ဖွင့်ပေးပါ။");
+    notify("Telegram App ထဲမှသာ မှာယူ၍ရပါမည်။ Telegram ထဲတွင် ဤဆိုင်ကို ပြန်ဖွင့်ပေးပါ။");
     return;
   }
 
-  if (selectedPaymentMethod === "cod") {
+  try {
+    if (selectedPaymentMethod !== "cod" && !selectedScreenshot) return;
     tg.sendData(JSON.stringify(order));
-  } else {
-    if (!selectedScreenshot) return;
-    tg.sendData(JSON.stringify(order));
-    alert(`${paymentAccounts[selectedPaymentMethod].label} ငွေလွှဲပြေစာ ဓာတ်ပုံကို ဤ Telegram chat ထဲသို့ ပြန်ပို့ပေးပါ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
+    // Note: sendData() closes the Mini App immediately, so any follow-up
+    // instructions (e.g. "now send your screenshot") come from the bot
+    // in the chat itself, not from here.
+  } catch (err) {
+    notify("sendData ERROR: " + err.message);
+    console.error(err);
+    return;
   }
 
   resetCheckout();
