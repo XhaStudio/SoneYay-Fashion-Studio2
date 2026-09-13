@@ -124,17 +124,19 @@ h1 em { color: var(--gold-dark); font-style: italic; }
 .add-button:active { transform: scale(.98); }
 .add-button span { float: right; font-size: 17px; line-height: 12px; }
 .quantity-controls {
-  align-items: center; background: var(--ink); border-radius: var(--radius-sm); color: white;
-  display: flex; height: 40px; justify-content: space-between; padding: 0 6px;
+  align-items: center; background: var(--ink); border-radius: 999px; color: white;
+  display: flex; gap: 18px; height: 40px; justify-content: center; margin: 0 auto; padding: 0 16px; width: fit-content;
 }
 .quantity-button {
-  align-items: center; background: transparent; border-radius: var(--radius-sm); color: white;
-  display: flex; font-size: 19px; height: 32px; justify-content: center; line-height: 1;
-  transition: background .15s; width: 32px;
+  align-items: center; background: transparent; border: none; border-radius: 50%; color: white;
+  cursor: pointer; display: flex; font-size: 16px; font-weight: 700; height: 22px; justify-content: center;
+  line-height: 1; padding: 0; transition: background .15s, color .15s; width: 22px;
 }
+.quantity-button.decrease { color: var(--muted); }
+.quantity-button.increase { color: var(--gold-dark); }
 .quantity-button:hover { background: rgba(255,255,255,.12); }
 .quantity-button:active { transform: scale(.9); }
-.quantity-value { font-size: 12.5px; font-weight: 700; }
+.quantity-value { font-size: 13px; font-weight: 700; min-width: 14px; text-align: center; }
 .empty-state { color: var(--muted); font-size: 13px; padding: 70px 0; text-align: center; }
 
 /* ---------- Cart bar / drawer ---------- */
