@@ -43,12 +43,22 @@ function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOver
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); }
 
+// IMPORTANT: replace with your bot server's public HTTPS URL (see bot.py's
+// API_PORT / reverse-proxy notes). Browsers block http:// calls from this
+// https:// page, so this must be a real https:// address, not http://.
+const API_BASE_URL = "https://YOUR-SERVER-DOMAIN:8080";
+
 function notify(msg) {
   console.log("[notify]", msg);
   try {
     if (tg && tg.showAlert) { tg.showAlert(msg); return; }
   } catch (err) { console.error("showAlert failed:", err); }
   try { alert(msg); } catch (err) { console.error("alert failed:", err); }
+}
+
+function telegramUser() {
+  const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  return user ? { id: user.id, username: user.username || user.first_name || String(user.id) } : null;
 }
 
 const paymentAccounts = {
@@ -66,9 +76,13 @@ const paymentAccount = $("#paymentAccount"), paymentAccountName = $("#paymentAcc
 const codNote = $("#codNote");
 const dropzone = $("#dropzone"), dropzoneEmpty = $("#dropzoneEmpty"), dropzoneFilled = $("#dropzoneFilled"), dropzonePreview = $("#dropzonePreview"), dropzoneFileName = $("#dropzoneFileName");
 const paymentScreenshotInput = $("#paymentScreenshot"), removeScreenshotButton = $("#removeScreenshotButton"), submitPaymentButton = $("#submitPaymentButton");
+const paymentStepContent = $("#paymentStepContent"), orderSuccess = $("#orderSuccess"), successSub = $("#successSub");
 
 function showCheckoutStep() { checkoutStep.hidden = false; paymentStep.hidden = true; }
-function showPaymentStep() { checkoutStep.hidden = true; paymentStep.hidden = false; }
+function showPaymentStep() {
+  checkoutStep.hidden = true; paymentStep.hidden = false;
+  paymentStepContent.hidden = false; orderSuccess.hidden = true;
+}
 
 function setPaymentMethod(method) {
   selectedPaymentMethod = method;
@@ -141,41 +155,63 @@ function buildOrder() {
   };
 }
 
-function resetCheckout() {
+function resetCartAndForm() {
   cart = {}; renderProducts(); renderCart(); clearScreenshot(); setPaymentMethod("kbzpay");
   custNameInput.value = ""; custPhoneInput.value = ""; custAddressInput.value = "";
-  showCheckoutStep(); setDrawer(false);
 }
 
-submitPaymentButton.addEventListener("click", () => {
+function showOrderSuccess(message) {
+  paymentStepContent.hidden = true;
+  successSub.textContent = message;
+  orderSuccess.hidden = false;
+}
+
+submitPaymentButton.addEventListener("click", async () => {
   if (Object.keys(cart).length === 0) return;
-  const order = buildOrder();
+  if (selectedPaymentMethod !== "cod" && !selectedScreenshot) return;
 
-  // --- Debug: remove this block once sendData is confirmed working ---
-  console.log("tg object:", tg);
-  console.log("Order payload:", order);
-  notify("DEBUG: tg exists = " + Boolean(tg) + " | payment = " + order.payment);
-  // ---------------------------------------------------------------
-
-  if (!tg) {
+  const user = telegramUser();
+  if (!user) {
     notify("Telegram App ထဲမှသာ မှာယူ၍ရပါမည်။ Telegram ထဲတွင် ဤဆိုင်ကို ပြန်ဖွင့်ပေးပါ။");
     return;
   }
 
-  try {
-    if (selectedPaymentMethod !== "cod" && !selectedScreenshot) return;
-    tg.sendData(JSON.stringify(order));
-    // Note: sendData() closes the Mini App immediately, so any follow-up
-    // instructions (e.g. "now send your screenshot") come from the bot
-    // in the chat itself, not from here.
-  } catch (err) {
-    notify("sendData ERROR: " + err.message);
-    console.error(err);
-    return;
-  }
+  const order = buildOrder();
+  const formData = new FormData();
+  formData.append("order", JSON.stringify(order));
+  formData.append("telegram_user_id", String(user.id));
+  formData.append("username", user.username);
+  if (selectedScreenshot) formData.append("photo", selectedScreenshot, selectedScreenshot.name);
 
-  resetCheckout();
-  if (tg) tg.close();
+  submitPaymentButton.disabled = true;
+  submitPaymentButton.classList.add("is-loading");
+  submitPaymentButton.textContent = "ပို့နေသည်...";
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/order`, { method: "POST", body: formData });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result || !result.ok) {
+      throw new Error((result && result.error) || `HTTP ${response.status}`);
+    }
+
+    const message = selectedPaymentMethod === "cod"
+      ? "ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။"
+      : "Admin မှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။";
+    showOrderSuccess(message);
+
+    setTimeout(() => {
+      resetCartAndForm();
+      showCheckoutStep();
+      setDrawer(false);
+    }, 2200);
+  } catch (err) {
+    console.error(err);
+    notify("မှာယူမှု ပို့၍မရပါ — ကွန်ရက် စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။ (" + err.message + ")");
+  } finally {
+    submitPaymentButton.disabled = false;
+    submitPaymentButton.classList.remove("is-loading");
+    submitPaymentButton.textContent = "ငွေလွှဲပြေစာ ပို့ရန်";
+  }
 });
 categoryTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-category]"); if (!button) return; activeCategory = button.dataset.category; renderCategories(); renderProducts(); });
 searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
