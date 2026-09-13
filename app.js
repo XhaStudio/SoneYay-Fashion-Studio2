@@ -46,7 +46,7 @@ if (tg) { tg.ready(); tg.expand(); }
 // IMPORTANT: replace with your bot server's public HTTPS URL (see bot.py's
 // API_PORT / reverse-proxy notes). Browsers block http:// calls from this
 // https:// page, so this must be a real https:// address, not http://.
-const API_BASE_URL = "https://soneyay-fa-d64.e.onjrnm.co.uk";
+const API_BASE_URL = "https://soneyay-fa-efc.d.onjrnm.link";
 
 function notify(msg) {
   console.log("[notify]", msg);
