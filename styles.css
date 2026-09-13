@@ -123,6 +123,7 @@ h1 em { color: var(--gold-dark); font-style: italic; }
 .add-button:hover { background: #35312c; }
 .add-button:active { transform: scale(.98); }
 .add-button span { float: right; font-size: 17px; line-height: 12px; }
+.quantity-controls[hidden] { display: none; }
 .quantity-controls {
   align-items: center; background: var(--ink); border-radius: 999px; color: white;
   display: flex; gap: 18px; height: 40px; justify-content: center; margin: 0 auto; padding: 0 16px; width: fit-content;
