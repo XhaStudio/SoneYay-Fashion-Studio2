@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -119,6 +121,19 @@
       <div class="product-actions"><button class="add-button">အိတ်ထဲထည့်ရန် <span>+</span></button><div class="quantity-controls" hidden><button class="quantity-button decrease" aria-label="အရေအတွက်လျှော့ရန်">−</button><span class="quantity-value">1</span><button class="quantity-button increase" aria-label="အရေအတွက်တိုးရန်">+</button></div></div>
     </article>
   </template>
+  <script>
+    // SoneYay Fashion Studio — Firebase project config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBH03tOgC-TC-a4n9BT2lzTu004hsHsi3I",
+      authDomain: "soneyay-fashion-studio.firebaseapp.com",
+      projectId: "soneyay-fashion-studio",
+      storageBucket: "soneyay-fashion-studio.firebasestorage.app",
+      messagingSenderId: "657037193391",
+      appId: "1:657037193391:web:23ee9cb2b03d39622fe45a",
+      measurementId: "G-1040H54Y9P",
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
   <script src="./app.js"></script>
 </body>
 </html>
