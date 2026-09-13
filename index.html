@@ -63,6 +63,7 @@
       </div>
 
       <div class="payment-step" id="paymentStep" hidden>
+        <div id="paymentStepContent">
         <p class="payment-label">ငွေပေးချေမှုနည်းလမ်း ရွေးပါ</p>
         <div class="payment-methods" role="tablist" aria-label="ငွေပေးချေမှုနည်းလမ်း">
           <button class="payment-method active" data-method="kbzpay" role="tab" aria-selected="true">KBZPay</button>
@@ -98,6 +99,13 @@
 
         <button class="submit-payment-button" id="submitPaymentButton" disabled>ငွေလွှဲပြေစာ ပို့ရန်</button>
         <button class="back-button" id="backToCartButton" type="button">← အိတ်ထဲသို့ ပြန်သွားရန်</button>
+        </div>
+
+        <div class="order-success" id="orderSuccess" hidden>
+          <div class="success-check"><span id="successCheckmark">✓</span></div>
+          <p class="success-title">မှာယူမှု ပို့ပြီးပါပြီ!</p>
+          <p class="success-sub" id="successSub">Admin မှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။</p>
+        </div>
       </div>
     </div>
   </aside>
