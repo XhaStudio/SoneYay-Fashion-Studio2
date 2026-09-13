@@ -49,7 +49,8 @@ let selectedScreenshot = null;
 
 const checkoutStep = $("#checkoutStep"), paymentStep = $("#paymentStep"), checkoutButton = $("#checkoutButton"), backToCartButton = $("#backToCartButton");
 const paymentMethodButtons = document.querySelectorAll(".payment-method");
-const paymentAccountName = $("#paymentAccountName"), paymentAccountNumber = $("#paymentAccountNumber"), copyAccountButton = $("#copyAccountButton");
+const paymentAccount = $("#paymentAccount"), paymentAccountName = $("#paymentAccountName"), paymentAccountNumber = $("#paymentAccountNumber"), copyAccountButton = $("#copyAccountButton");
+const codNote = $("#codNote");
 const dropzone = $("#dropzone"), dropzoneEmpty = $("#dropzoneEmpty"), dropzoneFilled = $("#dropzoneFilled"), dropzonePreview = $("#dropzonePreview"), dropzoneFileName = $("#dropzoneFileName");
 const paymentScreenshotInput = $("#paymentScreenshot"), removeScreenshotButton = $("#removeScreenshotButton"), submitPaymentButton = $("#submitPaymentButton");
 
@@ -58,9 +59,21 @@ function showPaymentStep() { checkoutStep.hidden = true; paymentStep.hidden = fa
 
 function setPaymentMethod(method) {
   selectedPaymentMethod = method;
-  const account = paymentAccounts[method];
-  paymentAccountName.textContent = account.label;
-  paymentAccountNumber.textContent = account.number;
+  const isCod = method === "cod";
+
+  // COD needs no wallet transfer and no payment-proof screenshot.
+  paymentAccount.hidden = isCod;
+  dropzone.hidden = isCod;
+  codNote.hidden = !isCod;
+  submitPaymentButton.textContent = isCod ? "မှာယူမှု အတည်ပြုပါ" : "ငွေလွှဲပြေစာ ပို့ရန်";
+  submitPaymentButton.disabled = isCod ? false : !selectedScreenshot;
+
+  if (!isCod) {
+    const account = paymentAccounts[method];
+    paymentAccountName.textContent = account.label;
+    paymentAccountNumber.textContent = account.number;
+  }
+
   paymentMethodButtons.forEach((button) => { const isActive = button.dataset.method === method; button.classList.toggle("active", isActive); button.setAttribute("aria-selected", String(isActive)); });
 }
 
@@ -100,12 +113,16 @@ dropzone.addEventListener("drop", (event) => {
 });
 dropzone.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); paymentScreenshotInput.click(); } });
 submitPaymentButton.addEventListener("click", () => {
-  if (!selectedScreenshot) return;
-  alert(`${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
-  cart = {}; renderProducts(); renderCart(); clearScreenshot(); setDrawer(false);
+  if (selectedPaymentMethod === "cod") {
+    alert("မှာယူမှုကို အတည်ပြုပြီးပါပြီ။ ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။");
+  } else {
+    if (!selectedScreenshot) return;
+    alert(`${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
+  }
+  cart = {}; renderProducts(); renderCart(); clearScreenshot(); setPaymentMethod("kbzpay"); setDrawer(false);
 });
 categoryTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-category]"); if (!button) return; activeCategory = button.dataset.category; renderCategories(); renderProducts(); });
 searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
 $("#bagButton").addEventListener("click", () => setDrawer(true)); $("#viewBag").addEventListener("click", () => setDrawer(true)); $("#closeBag").addEventListener("click", () => setDrawer(false)); drawerOverlay.addEventListener("click", () => setDrawer(false));
 $("#searchToggle").addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
-renderCategories(); renderProducts(); renderCart();
+renderCategories(); renderProducts(); renderCart(); setPaymentMethod("kbzpay");
