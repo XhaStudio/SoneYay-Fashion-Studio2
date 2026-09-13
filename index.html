@@ -61,15 +61,18 @@
         <div class="payment-methods" role="tablist" aria-label="ငွေပေးချေမှုနည်းလမ်း">
           <button class="payment-method active" data-method="kbzpay" role="tab" aria-selected="true">KBZPay</button>
           <button class="payment-method" data-method="wavemoney" role="tab" aria-selected="false">WaveMoney</button>
+          <button class="payment-method" data-method="cod" role="tab" aria-selected="false">COD</button>
         </div>
 
-        <div class="payment-account">
+        <div class="payment-account" id="paymentAccount">
           <div>
             <p class="payment-account-label">ဤနံပါတ်သို့ လွှဲပေးပါ · <strong id="paymentAccountName">KBZPay</strong></p>
             <p class="payment-account-number" id="paymentAccountNumber">09-750 123 456</p>
           </div>
           <button class="copy-button" id="copyAccountButton" type="button">ကူးယူရန်</button>
         </div>
+
+        <p class="cod-note" id="codNote" hidden>ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးရန်ဖြစ်ပါသည်။ ငွေလွှဲပြေစာ မလိုအပ်ပါ။</p>
 
         <label class="dropzone" id="dropzone" for="paymentScreenshot" tabindex="0">
           <input type="file" id="paymentScreenshot" accept="image/*" hidden />
