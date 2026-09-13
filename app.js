@@ -1,305 +1,220 @@
-:root {
-  --ink: #201d1a;
-  --muted: #85807a;
-  --line: #e4ddd2;
-  --paper: #faf6ef;
-  --card: #f1ebe0;
-  --gold: #a8823f;
-  --gold-dark: #8a6a2e;
-  --coral: #c65d3f;
-  --serif: "Playfair Display", Georgia, serif;
-  --sans: "Noto Sans Myanmar", "DM Sans", sans-serif;
-  --radius: 14px;
-  --radius-sm: 9px;
-  --shadow-soft: 0 8px 24px -14px rgba(32, 29, 26, 0.35);
-  --shadow-lift: 0 18px 40px -18px rgba(32, 29, 26, 0.45);
+const products = [
+  { id: 1, name: "ပုံသွင်း ဘလေဇာ", category: "Trendy", meta: "Atelier N° 8 · အနက်", price: 312000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=900&q=85", badge: "အသစ်" },
+  { id: 2, name: "လီနင်ရှည်ဝတ်စုံ", category: "Women", meta: "Lune Studio · အဖြူဖျော့", price: 201600, image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=900&q=85" },
+  { id: 3, name: "အေးမြသော ရှပ်အင်္ကျီ", category: "Men", meta: "Common Ground · အစိမ်းဖျော့", price: 151200, image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=85", badge: "အသစ်" },
+  { id: 4, name: "သားရေပခုံးအိတ်", category: "Accessories", meta: "Forma · ကော်ဖီရောင်", price: 260400, image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85" },
+  { id: 5, name: "နေ့စဉ်ဝတ် ဘောင်းဘီရှည်", category: "Women", meta: "Still Life · ဒင်နင်", price: 184800, image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=85" },
+  { id: 6, name: "ခေတ်ဟောင်း စနီကာ", category: "Shoes", meta: "Reebok · အဖြူဖျော့", price: 231000, image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85" },
+  { id: 7, name: "မီရီနိုချည် ပိုလို", category: "Men", meta: "Norse Project · ကုလားအုတ်ရောင်", price: 220500, image: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=900&q=85" },
+  { id: 8, name: "ကိုယ်ထည်ပါ နေကာမျက်မှန်", category: "Accessories", meta: "Onda · အညိုရောင်", price: 113400, image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=85" }
+];
+const categories = ["All", "Trendy", "Women", "Men", "Accessories", "Shoes"];
+const categoryLabels = { All: "အားလုံး", Trendy: "ခေတ်စား", Women: "အမျိုးသမီး", Men: "အမျိုးသား", Accessories: "အသုံးအဆောင်", Shoes: "ဖိနပ်" };
+let activeCategory = "All", searchTerm = "", cart = {};
+const $ = (selector) => document.querySelector(selector);
+const categoryTabs = $("#categoryTabs"), catalog = $("#catalog"), emptyState = $("#emptyState"), template = $("#productTemplate");
+const searchInput = $("#searchInput"), sortSelect = $("#sortSelect"), cartDrawer = $("#cartDrawer"), drawerOverlay = $("#drawerOverlay"), drawerItems = $("#drawerItems");
+const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
+function renderCategories() { categoryTabs.innerHTML = categories.map((category) => `<button class="category-tab ${category === activeCategory ? "active" : ""}" data-category="${category}" role="tab" aria-selected="${category === activeCategory}">${categoryLabels[category]}</button>`).join(""); }
+function visibleProducts() { return products.filter((product) => (activeCategory === "All" || product.category === activeCategory) && `${product.name} ${product.category} ${product.meta}`.toLowerCase().includes(searchTerm.toLowerCase())).sort((first, second) => sortSelect.value === "price-low" ? first.price - second.price : sortSelect.value === "price-high" ? second.price - first.price : first.id - second.id); }
+function renderProducts() {
+  const items = visibleProducts(); catalog.innerHTML = ""; emptyState.hidden = items.length > 0;
+  items.forEach((product) => { const card = template.content.cloneNode(true), quantity = cart[product.id] || 0;
+    const image = card.querySelector(".product-image"); image.src = product.image; image.alt = product.name;
+    card.querySelector(".product-name").textContent = product.name; card.querySelector(".product-meta").textContent = product.meta; card.querySelector(".product-price").textContent = money(product.price);
+    const badge = card.querySelector(".product-badge"); if (product.badge) { badge.hidden = false; badge.textContent = product.badge; }
+    const count = card.querySelector(".product-count"); count.hidden = quantity === 0; count.textContent = String(quantity);
+    const addButton = card.querySelector(".add-button"), controls = card.querySelector(".quantity-controls"), quantityValue = card.querySelector(".quantity-value");
+    if (quantity > 0) { addButton.hidden = true; controls.hidden = false; quantityValue.textContent = String(quantity); }
+    addButton.addEventListener("click", () => updateQuantity(product.id, 1)); card.querySelector(".decrease").addEventListener("click", () => updateQuantity(product.id, -1)); card.querySelector(".increase").addEventListener("click", () => updateQuantity(product.id, 1)); catalog.appendChild(card);
+  });
+}
+function updateQuantity(id, change) { const nextQuantity = Math.max(0, (cart[id] || 0) + change); if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity; renderProducts(); renderCart(); }
+function cartDetails() { return products.filter((product) => cart[product.id]).map((product) => ({ product, quantity: cart[product.id] })); }
+function renderCart() {
+  const details = cartDetails(), itemCount = details.reduce((sum, item) => sum + item.quantity, 0), total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  $("#bagCount").textContent = String(itemCount); $("#cartItemCount").textContent = `${itemCount} ပစ္စည်း`; $("#cartTotal").textContent = money(total); $("#drawerTotal").textContent = money(total);
+  $("#cartBar").classList.toggle("visible", itemCount > 0); $("#cartBar").setAttribute("aria-hidden", String(itemCount === 0));
+  drawerItems.innerHTML = details.length ? details.map(({ product, quantity }) => `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${money(product.price)}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`).join("") : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
+  drawerItems.querySelectorAll("button[data-id]").forEach((button) => button.addEventListener("click", () => updateQuantity(Number(button.dataset.id), Number(button.dataset.change))));
+}
+function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOverlay.classList.toggle("open", open); cartDrawer.setAttribute("aria-hidden", String(!open)); if (!open) showCheckoutStep(); }
+
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
+// IMPORTANT: replace with your bot server's public HTTPS URL (see bot.py's
+// API_PORT / reverse-proxy notes). Browsers block http:// calls from this
+// https:// page, so this must be a real https:// address, not http://.
+const API_BASE_URL = "https://soneyay-fa-d64.e.onjrnm.co.uk";
+
+function notify(msg) {
+  console.log("[notify]", msg);
+  try {
+    if (tg && tg.showAlert) { tg.showAlert(msg); return; }
+  } catch (err) { console.error("showAlert failed:", err); }
+  try { alert(msg); } catch (err) { console.error("alert failed:", err); }
 }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
-button, input, select { font: inherit; }
-button, a { -webkit-tap-highlight-color: transparent; }
-button { border: 0; cursor: pointer; }
-a { color: inherit; text-decoration: none; }
-:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
-img { max-width: 100%; }
-
-/* ---------- Header ---------- */
-.site-header {
-  align-items: center;
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 12px;
-  height: 68px;
-  justify-content: space-between;
-  padding: 0 clamp(18px, 5vw, 76px);
-  position: sticky;
-  top: 0;
-  z-index: 9;
-}
-.brand { align-items: center; display: flex; font-size: 17px; font-weight: 700; gap: 9px; letter-spacing: -.02em; }
-.brand-mark {
-  align-items: center; background: var(--ink); border-radius: 8px; color: var(--paper);
-  display: inline-flex; font-family: var(--serif); font-size: 15px; height: 32px;
-  justify-content: center; transform: rotate(-6deg); width: 32px;
-}
-.brand-dot { color: var(--coral); }
-.top-nav { display: flex; gap: 30px; margin-left: 60px; }
-.top-nav a { color: var(--muted); font-size: 12.5px; font-weight: 600; position: relative; }
-.top-nav a.active, .top-nav a:hover { color: var(--ink); }
-.top-nav a.active::after { background: var(--coral); border-radius: 2px; bottom: -9px; content: ""; height: 2px; left: 0; position: absolute; width: 100%; }
-.header-actions { align-items: center; display: flex; gap: 10px; }
-.icon-button, .bag-button { background: none; color: var(--ink); }
-.icon-button {
-  align-items: center; border-radius: 50%; display: inline-flex; font-size: 19px;
-  height: 40px; justify-content: center; transition: background .2s;
-}
-.icon-button:hover, .icon-button:active { background: var(--card); }
-.bag-button {
-  align-items: center; background: var(--ink); border-radius: 999px; color: var(--paper);
-  display: inline-flex; font-size: 12px; font-weight: 600; gap: 8px; height: 40px; padding: 0 16px;
-  transition: transform .15s ease, background .2s;
-}
-.bag-button:hover { background: #35312c; }
-.bag-button:active { transform: scale(.96); }
-.bag-button span {
-  align-items: center; background: var(--coral); border-radius: 50%; color: white;
-  display: inline-flex; font-size: 10px; font-weight: 700; height: 19px; justify-content: center; width: 19px;
+function telegramUser() {
+  const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  return user ? { id: user.id, username: user.username || user.first_name || String(user.id) } : null;
 }
 
-/* ---------- Main / Intro ---------- */
-main { margin: 0 auto; max-width: 1440px; padding: 0 clamp(18px, 5vw, 76px) 120px; }
-.intro { align-items: end; display: flex; gap: 24px; justify-content: space-between; padding: clamp(48px, 8vw, 108px) 0 56px; }
-.eyebrow { align-items: center; color: var(--coral); display: flex; font-size: 11px; font-weight: 700; gap: 8px; margin: 0 0 15px; }
-.eyebrow span { background: linear-gradient(90deg, var(--coral), transparent); display: inline-block; height: 1.5px; width: 30px; }
-h1 { font-family: var(--serif); font-size: clamp(38px, 6.4vw, 82px); font-weight: 500; letter-spacing: -.03em; line-height: 1.02; margin: 0; }
-h1 em { color: var(--gold-dark); font-style: italic; }
-.intro-copy { color: var(--muted); font-size: 13.5px; line-height: 1.7; margin: 0 0 6px; max-width: 280px; }
+const paymentAccounts = {
+  kbzpay: { label: "KBZPay", number: "09-750 123 456" },
+  wavemoney: { label: "WaveMoney", number: "09-961 234 567" }
+};
+const paymentCodes = { kbzpay: "KBZPay", wavemoney: "WavePay", cod: "COD" };
+let selectedPaymentMethod = "kbzpay";
+let selectedScreenshot = null;
 
-/* ---------- Toolbar ---------- */
-.shop-toolbar {
-  align-items: center; background: var(--paper); border-bottom: 1px solid var(--line);
-  border-top: 1px solid var(--line); display: flex; gap: 16px; justify-content: space-between;
-  min-height: 64px; position: sticky; top: 68px; z-index: 6;
-}
-.category-tabs { display: flex; gap: 22px; overflow: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.category-tabs::-webkit-scrollbar { display: none; }
-.category-tab { background: transparent; color: var(--muted); flex-shrink: 0; font-size: 12.5px; padding: 22px 2px 19px; position: relative; white-space: nowrap; }
-.category-tab.active, .category-tab:hover { color: var(--ink); font-weight: 700; }
-.category-tab.active::after { background: var(--coral); border-radius: 2px; bottom: -1px; content: ""; height: 2px; left: 0; position: absolute; width: 100%; }
-.toolbar-right { align-items: center; display: flex; flex-shrink: 0; gap: 18px; }
-.search-field { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 6px; padding: 5px 0; transition: border-color .2s; }
-.search-field:focus-within { border-color: var(--gold); }
-.search-field span { font-size: 16px; opacity: .7; }
-.search-field input { background: transparent; border: 0; color: var(--ink); font-size: 12.5px; outline: 0; width: 120px; }
-.search-field input::placeholder { color: var(--muted); }
-.sort-field { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
-.sort-field select { background: transparent; border: 0; color: var(--ink); cursor: pointer; font-size: 11.5px; font-weight: 600; outline: 0; }
+const custNameInput = $("#custName"), custPhoneInput = $("#custPhone"), custAddressInput = $("#custAddress");
+const checkoutStep = $("#checkoutStep"), paymentStep = $("#paymentStep"), checkoutButton = $("#checkoutButton"), backToCartButton = $("#backToCartButton");
+const paymentMethodButtons = document.querySelectorAll(".payment-method");
+const paymentAccount = $("#paymentAccount"), paymentAccountName = $("#paymentAccountName"), paymentAccountNumber = $("#paymentAccountNumber"), copyAccountButton = $("#copyAccountButton");
+const codNote = $("#codNote");
+const dropzone = $("#dropzone"), dropzoneEmpty = $("#dropzoneEmpty"), dropzoneFilled = $("#dropzoneFilled"), dropzonePreview = $("#dropzonePreview"), dropzoneFileName = $("#dropzoneFileName");
+const paymentScreenshotInput = $("#paymentScreenshot"), removeScreenshotButton = $("#removeScreenshotButton"), submitPaymentButton = $("#submitPaymentButton");
+const paymentStepContent = $("#paymentStepContent"), orderSuccess = $("#orderSuccess"), successSub = $("#successSub");
 
-/* ---------- Catalog ---------- */
-.catalog { display: grid; gap: 30px 18px; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 32px; }
-.product-card { min-width: 0; }
-.product-image-wrap { background: var(--card); border-radius: var(--radius); overflow: hidden; position: relative; }
-.product-image { aspect-ratio: .78; display: block; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.2,1); width: 100%; }
-.product-card:hover .product-image { transform: scale(1.045); }
-.product-badge, .product-count { position: absolute; top: 10px; }
-.product-badge { background: var(--coral); border-radius: 999px; color: white; font-size: 9.5px; font-weight: 700; left: 10px; padding: 6px 10px; }
-.product-count {
-  align-items: center; background: var(--gold-dark); border: 2px solid var(--paper); border-radius: 50%;
-  box-shadow: var(--shadow-soft); color: white; display: flex; font-size: 11px; font-weight: 700;
-  height: 27px; justify-content: center; right: 10px; width: 27px;
+function showCheckoutStep() { checkoutStep.hidden = false; paymentStep.hidden = true; }
+function showPaymentStep() {
+  checkoutStep.hidden = true; paymentStep.hidden = false;
+  paymentStepContent.hidden = false; orderSuccess.hidden = true;
 }
-.product-details { align-items: start; display: flex; justify-content: space-between; padding: 13px 2px 11px; }
-.product-name { font-size: 13px; font-weight: 600; line-height: 1.35; margin: 0 0 4px; }
-.product-meta { color: var(--muted); font-size: 11px; margin: 0; }
-.product-price { color: var(--gold-dark); font-size: 12px; font-weight: 700; text-align: right; white-space: nowrap; }
-.product-actions { min-height: 40px; }
-.add-button {
-  background: var(--ink); border-radius: var(--radius-sm); color: var(--paper); font-size: 11.5px;
-  font-weight: 600; height: 40px; padding: 0 14px; text-align: left; transition: background .2s, transform .15s; width: 100%;
-}
-.add-button:hover { background: #35312c; }
-.add-button:active { transform: scale(.98); }
-.add-button span { float: right; font-size: 17px; line-height: 12px; }
-.quantity-controls {
-  align-items: center; background: var(--ink); border-radius: 999px; color: white;
-  display: flex; gap: 18px; height: 40px; justify-content: center; margin: 0 auto; padding: 0 16px; width: fit-content;
-}
-.quantity-button {
-  align-items: center; background: transparent; border: none; border-radius: 50%; color: white;
-  cursor: pointer; display: flex; font-size: 16px; font-weight: 700; height: 22px; justify-content: center;
-  line-height: 1; padding: 0; transition: background .15s, color .15s; width: 22px;
-}
-.quantity-button.decrease { color: var(--muted); }
-.quantity-button.increase { color: var(--gold-dark); }
-.quantity-button:hover { background: rgba(255,255,255,.12); }
-.quantity-button:active { transform: scale(.9); }
-.quantity-value { font-size: 13px; font-weight: 700; min-width: 14px; text-align: center; }
-.empty-state { color: var(--muted); font-size: 13px; padding: 70px 0; text-align: center; }
 
-/* ---------- Cart bar / drawer ---------- */
-.cart-bar {
-  align-items: center; background: var(--ink); border-radius: 16px; bottom: 16px; box-shadow: var(--shadow-lift);
-  color: white; display: flex; justify-content: space-between; left: 16px; padding: 15px 20px;
-  position: fixed; right: 16px; transform: translateY(140%); transition: transform .35s cubic-bezier(.2,.8,.2,1); z-index: 8;
-  padding-bottom: max(15px, env(safe-area-inset-bottom));
-}
-.cart-bar.visible { transform: translateY(0); }
-.cart-bar > div { align-items: center; display: flex; gap: 18px; min-width: 0; }
-.cart-summary-label { color: #c7c3ba; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cart-summary-label strong { color: white; }
-.bag-dot { background: var(--coral); border-radius: 50%; display: inline-block; height: 7px; margin-right: 7px; width: 7px; }
-.cart-total { color: white; flex-shrink: 0; font-family: var(--serif); font-size: 18px; }
-.cart-bar button, .checkout-button {
-  align-items: center; background: var(--coral); border-radius: 999px; color: white; display: inline-flex;
-  flex-shrink: 0; font-size: 12px; font-weight: 700; gap: 10px; padding: 12px 18px; transition: background .2s, transform .15s;
-}
-.cart-bar button:hover, .checkout-button:hover { background: #b34e33; }
-.cart-bar button:active, .checkout-button:active { transform: scale(.96); }
-.cart-drawer {
-  background: var(--paper); border-radius: 20px 0 0 20px; box-shadow: -20px 0 60px rgba(32,29,26,.18);
-  display: flex; flex-direction: column; height: 100%; max-width: 420px; padding: 28px;
-  position: fixed; right: 0; top: 0; transform: translateX(100%); transition: transform .4s cubic-bezier(.2,.7,.2,1);
-  width: 100%; z-index: 11;
-}
-.cart-drawer.open { transform: translateX(0); }
-.drawer-overlay { background: rgba(32,29,26,.42); backdrop-filter: blur(2px); inset: 0; opacity: 0; pointer-events: none; position: fixed; transition: opacity .3s; z-index: 10; }
-.drawer-overlay.open { opacity: 1; pointer-events: auto; }
-.drawer-head { align-items: start; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding-bottom: 22px; }
-.drawer-head .eyebrow { margin-bottom: 8px; }
-h2 { font-family: var(--serif); font-size: 28px; font-weight: 500; margin: 0; }
-.close-button {
-  align-items: center; background: var(--card); border-radius: 50%; color: var(--ink); display: flex;
-  font-size: 22px; height: 36px; justify-content: center; line-height: .7; transition: background .2s; width: 36px;
-}
-.close-button:hover { background: var(--line); }
-.drawer-items { flex: 1 1 auto; min-height: 190px; overflow-y: auto; padding: 22px 0; }
-.drawer-item { align-items: center; display: flex; gap: 16px; margin-bottom: 20px; }
-.drawer-item img { aspect-ratio: .8; border-radius: var(--radius-sm); object-fit: cover; width: 84px; }
-.drawer-item-info { flex: 1; min-width: 0; }
-.drawer-item-info h3 { font-size: 15px; margin: 0 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.drawer-item-info p { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
-.drawer-item-price { color: var(--gold-dark); font-size: 14px; font-weight: 700; }
-.mini-quantity { align-items: center; background: var(--card); border-radius: 999px; display: flex; flex-shrink: 0; gap: 12px; padding: 6px 10px; }
-.mini-quantity button { align-items: center; background: transparent; display: flex; font-size: 17px; height: 24px; justify-content: center; width: 24px; }
-.mini-quantity span { font-size: 13px; font-weight: 600; min-width: 14px; text-align: center; }
-.drawer-footer { border-top: 1px solid var(--line); flex-shrink: 0; max-height: 52vh; overflow-y: auto; padding-top: 20px; }
-.total-row { align-items: baseline; display: flex; font-size: 13px; justify-content: space-between; margin-bottom: 16px; }
-.total-row strong { color: var(--gold-dark); font-family: var(--serif); font-size: 20px; }
-.checkout-button { display: flex; justify-content: space-between; width: 100%; }
-.fine-print { color: var(--muted); font-size: 10px; margin: 12px 0 0; text-align: center; }
-.customer-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-.customer-fields label { color: var(--muted); display: flex; flex-direction: column; font-size: 11px; gap: 6px; }
-.customer-fields input, .customer-fields textarea {
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  color: var(--ink); font-family: inherit; font-size: 13px; padding: 10px 12px;
-}
-.customer-fields textarea { resize: vertical; }
+function setPaymentMethod(method) {
+  selectedPaymentMethod = method;
+  const isCod = method === "cod";
 
-/* ---------- Payment step ---------- */
-.payment-step { display: flex; flex-direction: column; gap: 12px; }
-.payment-label { color: var(--muted); font-size: 11px; margin: 0; }
-.payment-methods { background: var(--card); border-radius: 999px; display: flex; gap: 4px; padding: 4px; }
-.payment-method {
-  background: transparent; border-radius: 999px; color: var(--muted); flex: 1; font-size: 11px;
-  font-weight: 700; padding: 10px 0; transition: background .2s, color .2s; white-space: nowrap;
-}
-.payment-method.active { background: var(--ink); color: var(--paper); }
-.cod-note { background: var(--card); border-radius: var(--radius-sm); color: var(--muted); font-size: 11.5px; margin: 0; padding: 14px 16px; text-align: center; }
-.payment-account {
-  align-items: center; background: var(--card); border-radius: var(--radius-sm); display: flex;
-  gap: 10px; justify-content: space-between; padding: 14px 16px;
-}
-.payment-account-label { color: var(--muted); font-size: 10.5px; margin: 0 0 4px; }
-.payment-account-label strong { color: var(--ink); }
-.payment-account-number { font-family: var(--serif); font-size: 17px; font-weight: 600; letter-spacing: .02em; margin: 0; }
-.copy-button {
-  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; color: var(--ink);
-  flex-shrink: 0; font-size: 10.5px; font-weight: 700; padding: 8px 14px; transition: background .2s;
-}
-.copy-button:hover { background: var(--line); }
-.copy-button.copied { background: var(--gold-dark); border-color: var(--gold-dark); color: white; }
+  // COD needs no wallet transfer and no payment-proof screenshot.
+  paymentAccount.hidden = isCod;
+  dropzone.hidden = isCod;
+  codNote.hidden = !isCod;
+  submitPaymentButton.textContent = isCod ? "မှာယူမှု အတည်ပြုပါ" : "ငွေလွှဲပြေစာ ပို့ရန်";
+  submitPaymentButton.disabled = isCod ? false : !selectedScreenshot;
 
-.dropzone {
-  border: 1.5px dashed var(--line); border-radius: var(--radius); cursor: pointer; display: block;
-  padding: 22px 16px; text-align: center; transition: border-color .2s, background .2s;
-}
-.dropzone:hover, .dropzone:focus-visible { background: var(--card); border-color: var(--gold); }
-.dropzone.dragover { background: var(--card); border-color: var(--gold-dark); border-style: solid; }
-.dropzone-icon {
-  align-items: center; background: var(--card); border-radius: 50%; color: var(--gold-dark); display: inline-flex;
-  font-size: 17px; height: 38px; justify-content: center; margin-bottom: 10px; width: 38px;
-}
-.dropzone-title { font-size: 12px; font-weight: 600; margin: 0 0 3px; }
-.dropzone-subtitle { color: var(--muted); font-size: 10.5px; margin: 0; }
-.dropzone-filled { align-items: center; display: flex; gap: 12px; text-align: left; }
-.dropzone-filled img { border-radius: var(--radius-sm); flex-shrink: 0; height: 58px; object-fit: cover; width: 58px; }
-.dropzone-file-info { min-width: 0; }
-.dropzone-file-info p { color: var(--muted); font-size: 11px; margin: 0 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dropzone-file-info button {
-  background: transparent; color: var(--coral); font-size: 11px; font-weight: 700; padding: 0; text-decoration: underline;
-}
-.submit-payment-button {
-  background: var(--gold-dark); border-radius: var(--radius-sm); color: white; font-size: 12.5px;
-  font-weight: 700; height: 44px; transition: background .2s, opacity .2s, transform .15s; width: 100%;
-}
-.submit-payment-button:hover:not(:disabled) { background: #74581f; }
-.submit-payment-button:active:not(:disabled) { transform: scale(.98); }
-.submit-payment-button:disabled { cursor: not-allowed; opacity: .45; }
-.back-button { background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600; padding: 4px 0; text-align: center; width: 100%; }
+  if (!isCod) {
+    const account = paymentAccounts[method];
+    paymentAccountName.textContent = account.label;
+    paymentAccountNumber.textContent = account.number;
+  }
 
-/* ---------- Order success animation ---------- */
-.order-success { align-items: center; display: flex; flex-direction: column; gap: 6px; padding: 28px 10px 10px; text-align: center; }
-.success-check {
-  align-items: center; animation: successPop .45s cubic-bezier(.34,1.56,.64,1) both;
-  background: var(--gold-dark); border-radius: 50%; color: white; display: flex;
-  font-size: 30px; height: 68px; justify-content: center; margin-bottom: 6px; width: 68px;
+  paymentMethodButtons.forEach((button) => { const isActive = button.dataset.method === method; button.classList.toggle("active", isActive); button.setAttribute("aria-selected", String(isActive)); });
 }
-.success-title { font-family: var(--serif); font-size: 20px; font-weight: 600; margin: 0; }
-.success-sub { color: var(--muted); font-size: 12px; margin: 0; }
-@keyframes successPop {
-  0% { opacity: 0; transform: scale(.3); }
-  60% { opacity: 1; transform: scale(1.15); }
-  100% { opacity: 1; transform: scale(1); }
-}
-.submit-payment-button.is-loading { opacity: .7; pointer-events: none; }
-.back-button:hover { color: var(--ink); }
 
-/* ---------- Responsive ---------- */
-@media (max-width: 1080px) {
-  .catalog { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+function setScreenshot(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  selectedScreenshot = file;
+  const reader = new FileReader();
+  reader.onload = () => { dropzonePreview.src = String(reader.result); };
+  reader.readAsDataURL(file);
+  dropzoneFileName.textContent = file.name;
+  dropzoneEmpty.hidden = true; dropzoneFilled.hidden = false;
+  submitPaymentButton.disabled = false;
 }
-@media (max-width: 860px) {
-  .top-nav { display: none; }
-  .intro { align-items: start; flex-direction: column; gap: 20px; padding: 36px 0 34px; }
-  .intro-copy { margin: 0; max-width: none; }
+
+function clearScreenshot() {
+  selectedScreenshot = null; paymentScreenshotInput.value = "";
+  dropzoneEmpty.hidden = false; dropzoneFilled.hidden = true;
+  submitPaymentButton.disabled = true;
 }
-@media (max-width: 700px) {
-  .site-header { height: 60px; padding: 0 16px; }
-  .brand { font-size: 15px; }
-  .shop-toolbar { top: 60px; }
-  main { padding: 0 16px 130px; }
-  .toolbar-right { gap: 12px; }
-  .search-field input { width: 78px; }
-  .sort-field { font-size: 10.5px; }
+
+checkoutButton.addEventListener("click", () => {
+  if (!custNameInput.value.trim() || !custPhoneInput.value.trim() || !custAddressInput.value.trim()) {
+    notify("ကျေးဇူးပြု၍ အမည်၊ ဖုန်းနံပါတ်နှင့် လိပ်စာ ဖြည့်ပေးပါ။");
+    return;
+  }
+  showPaymentStep();
+});
+backToCartButton.addEventListener("click", showCheckoutStep);
+paymentMethodButtons.forEach((button) => button.addEventListener("click", () => setPaymentMethod(button.dataset.method)));
+copyAccountButton.addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(paymentAccountNumber.textContent || ""); } catch { /* clipboard unavailable */ }
+  copyAccountButton.classList.add("copied"); copyAccountButton.textContent = "ကူးယူပြီးပါပြီ";
+  setTimeout(() => { copyAccountButton.classList.remove("copied"); copyAccountButton.textContent = "ကူးယူရန်"; }, 1600);
+});
+paymentScreenshotInput.addEventListener("change", () => { if (paymentScreenshotInput.files && paymentScreenshotInput.files[0]) setScreenshot(paymentScreenshotInput.files[0]); });
+removeScreenshotButton.addEventListener("click", (event) => { event.preventDefault(); clearScreenshot(); });
+dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("dragover"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", (event) => {
+  event.preventDefault(); dropzone.classList.remove("dragover");
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  if (file) setScreenshot(file);
+});
+dropzone.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); paymentScreenshotInput.click(); } });
+function buildOrder() {
+  return {
+    type: "order",
+    items: cartDetails().map(({ product, quantity }) => ({ name: product.name, meta: product.meta, quantity, price: product.price })),
+    total: cartDetails().reduce((sum, { product, quantity }) => sum + product.price * quantity, 0),
+    payment: paymentCodes[selectedPaymentMethod],
+    customer: { name: custNameInput.value.trim(), phone: custPhoneInput.value.trim(), address: custAddressInput.value.trim() }
+  };
 }
-@media (max-width: 620px) {
-  .shop-toolbar { align-items: stretch; flex-direction: column; gap: 4px; min-height: auto; padding: 12px 0 0; }
-  .category-tabs { gap: 20px; }
-  .category-tab { padding: 6px 2px 12px; }
-  .toolbar-right { border-top: 1px solid var(--line); justify-content: space-between; padding: 10px 0; }
-  .catalog { gap: 22px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 22px; }
-  .product-name { font-size: 12px; }
-  .product-price { font-size: 11px; }
-  .cart-bar { border-radius: 14px; bottom: 10px; left: 10px; padding: 13px 16px; right: 10px; }
-  .cart-bar > div { gap: 10px; }
-  .cart-summary-label { display: none; }
-  .cart-total { font-size: 15px; }
-  .cart-bar button { padding: 11px 16px; }
-  .cart-drawer { border-radius: 18px 18px 0 0; bottom: 0; height: auto; max-height: 92vh; max-width: none; padding: 22px 18px; top: auto; transform: translateY(100%); }
-  .drawer-footer { max-height: 46vh; }
-  .cart-drawer.open { transform: translateY(0); }
-  h2 { font-size: 22px; }
+
+function resetCartAndForm() {
+  cart = {}; renderProducts(); renderCart(); clearScreenshot(); setPaymentMethod("kbzpay");
+  custNameInput.value = ""; custPhoneInput.value = ""; custAddressInput.value = "";
 }
+
+function showOrderSuccess(message) {
+  paymentStepContent.hidden = true;
+  successSub.textContent = message;
+  orderSuccess.hidden = false;
+}
+
+submitPaymentButton.addEventListener("click", async () => {
+  if (Object.keys(cart).length === 0) return;
+  if (selectedPaymentMethod !== "cod" && !selectedScreenshot) return;
+
+  const user = telegramUser();
+  if (!user) {
+    notify("Telegram App ထဲမှသာ မှာယူ၍ရပါမည်။ Telegram ထဲတွင် ဤဆိုင်ကို ပြန်ဖွင့်ပေးပါ။");
+    return;
+  }
+
+  const order = buildOrder();
+  const formData = new FormData();
+  formData.append("order", JSON.stringify(order));
+  formData.append("telegram_user_id", String(user.id));
+  formData.append("username", user.username);
+  if (selectedScreenshot) formData.append("photo", selectedScreenshot, selectedScreenshot.name);
+
+  submitPaymentButton.disabled = true;
+  submitPaymentButton.classList.add("is-loading");
+  submitPaymentButton.textContent = "ပို့နေသည်...";
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/order`, { method: "POST", body: formData });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result || !result.ok) {
+      throw new Error((result && result.error) || `HTTP ${response.status}`);
+    }
+
+    const message = selectedPaymentMethod === "cod"
+      ? "ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။"
+      : "Admin မှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။";
+    showOrderSuccess(message);
+
+    setTimeout(() => {
+      resetCartAndForm();
+      showCheckoutStep();
+      setDrawer(false);
+    }, 2200);
+  } catch (err) {
+    console.error(err);
+    notify("မှာယူမှု ပို့၍မရပါ — ကွန်ရက် စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။ (" + err.message + ")");
+  } finally {
+    submitPaymentButton.disabled = false;
+    submitPaymentButton.classList.remove("is-loading");
+    submitPaymentButton.textContent = "ငွေလွှဲပြေစာ ပို့ရန်";
+  }
+});
+categoryTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-category]"); if (!button) return; activeCategory = button.dataset.category; renderCategories(); renderProducts(); });
+searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
+$("#bagButton").addEventListener("click", () => setDrawer(true)); $("#viewBag").addEventListener("click", () => setDrawer(true)); $("#closeBag").addEventListener("click", () => setDrawer(false)); drawerOverlay.addEventListener("click", () => setDrawer(false));
+$("#searchToggle").addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
+renderCategories(); renderProducts(); renderCart(); setPaymentMethod("kbzpay");
