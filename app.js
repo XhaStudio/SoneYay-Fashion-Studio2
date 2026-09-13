@@ -40,13 +40,18 @@ function renderCart() {
 }
 function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOverlay.classList.toggle("open", open); cartDrawer.setAttribute("aria-hidden", String(!open)); if (!open) showCheckoutStep(); }
 
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
 const paymentAccounts = {
   kbzpay: { label: "KBZPay", number: "09-750 123 456" },
   wavemoney: { label: "WaveMoney", number: "09-961 234 567" }
 };
+const paymentCodes = { kbzpay: "KBZPay", wavemoney: "WavePay", cod: "COD" };
 let selectedPaymentMethod = "kbzpay";
 let selectedScreenshot = null;
 
+const custNameInput = $("#custName"), custPhoneInput = $("#custPhone"), custAddressInput = $("#custAddress");
 const checkoutStep = $("#checkoutStep"), paymentStep = $("#paymentStep"), checkoutButton = $("#checkoutButton"), backToCartButton = $("#backToCartButton");
 const paymentMethodButtons = document.querySelectorAll(".payment-method");
 const paymentAccount = $("#paymentAccount"), paymentAccountName = $("#paymentAccountName"), paymentAccountNumber = $("#paymentAccountNumber"), copyAccountButton = $("#copyAccountButton");
@@ -94,7 +99,13 @@ function clearScreenshot() {
   submitPaymentButton.disabled = true;
 }
 
-checkoutButton.addEventListener("click", showPaymentStep);
+checkoutButton.addEventListener("click", () => {
+  if (!custNameInput.value.trim() || !custPhoneInput.value.trim() || !custAddressInput.value.trim()) {
+    alert("ကျေးဇူးပြု၍ အမည်၊ ဖုန်းနံပါတ်နှင့် လိပ်စာ ဖြည့်ပေးပါ။");
+    return;
+  }
+  showPaymentStep();
+});
 backToCartButton.addEventListener("click", showCheckoutStep);
 paymentMethodButtons.forEach((button) => button.addEventListener("click", () => setPaymentMethod(button.dataset.method)));
 copyAccountButton.addEventListener("click", async () => {
@@ -112,14 +123,41 @@ dropzone.addEventListener("drop", (event) => {
   if (file) setScreenshot(file);
 });
 dropzone.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); paymentScreenshotInput.click(); } });
+function buildOrder() {
+  return {
+    type: "order",
+    items: cartDetails().map(({ product, quantity }) => ({ name: product.name, meta: product.meta, quantity, price: product.price })),
+    total: cartDetails().reduce((sum, { product, quantity }) => sum + product.price * quantity, 0),
+    payment: paymentCodes[selectedPaymentMethod],
+    customer: { name: custNameInput.value.trim(), phone: custPhoneInput.value.trim(), address: custAddressInput.value.trim() }
+  };
+}
+
+function resetCheckout() {
+  cart = {}; renderProducts(); renderCart(); clearScreenshot(); setPaymentMethod("kbzpay");
+  custNameInput.value = ""; custPhoneInput.value = ""; custAddressInput.value = "";
+  showCheckoutStep(); setDrawer(false);
+}
+
 submitPaymentButton.addEventListener("click", () => {
+  if (Object.keys(cart).length === 0) return;
+  const order = buildOrder();
+
+  if (!tg) {
+    alert("Telegram App ထဲမှသာ မှာယူ၍ရပါမည်။ Telegram ထဲတွင် ဤဆိုင်ကို ပြန်ဖွင့်ပေးပါ။");
+    return;
+  }
+
   if (selectedPaymentMethod === "cod") {
-    alert("မှာယူမှုကို အတည်ပြုပြီးပါပြီ။ ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။");
+    tg.sendData(JSON.stringify(order));
   } else {
     if (!selectedScreenshot) return;
-    alert(`${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
+    tg.sendData(JSON.stringify(order));
+    alert(`${paymentAccounts[selectedPaymentMethod].label} ငွေလွှဲပြေစာ ဓာတ်ပုံကို ဤ Telegram chat ထဲသို့ ပြန်ပို့ပေးပါ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
   }
-  cart = {}; renderProducts(); renderCart(); clearScreenshot(); setPaymentMethod("kbzpay"); setDrawer(false);
+
+  resetCheckout();
+  if (tg) tg.close();
 });
 categoryTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-category]"); if (!button) return; activeCategory = button.dataset.category; renderCategories(); renderProducts(); });
 searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
