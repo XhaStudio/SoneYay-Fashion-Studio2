@@ -43,10 +43,9 @@ function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOver
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); }
 
-// IMPORTANT: replace with your bot server's public HTTPS URL (see bot.py's
-// API_PORT / reverse-proxy notes). Browsers block http:// calls from this
-// https:// page, so this must be a real https:// address, not http://.
-const API_BASE_URL = "https://soneyay-fa-efc.d.onjrnm.link";
+// Bot server's public HTTPS URL, now hosted on Render.
+// Browsers block http:// calls from this https:// page, so this must stay https://.
+const API_BASE_URL = "https://soneyay-fashion-studio3.onrender.com";
 
 function notify(msg) {
   console.log("[notify]", msg);
