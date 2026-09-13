@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -52,6 +53,11 @@
       <div class="total-row"><span>စုစုပေါင်းခွဲ</span><strong id="drawerTotal">$0</strong></div>
 
       <div id="checkoutStep">
+        <div class="customer-fields">
+          <label>အမည်<input type="text" id="custName" placeholder="သင့်အမည်" autocomplete="name" /></label>
+          <label>ဖုန်းနံပါတ်<input type="tel" id="custPhone" placeholder="09xxxxxxxxx" autocomplete="tel" /></label>
+          <label>လိပ်စာ<textarea id="custAddress" placeholder="ပို့ဆောင်ရန်လိပ်စာ" rows="2"></textarea></label>
+        </div>
         <button class="checkout-button" id="checkoutButton">ငွေရှင်းရန် ဆက်သွားပါ <span>→</span></button>
         <p class="fine-print">အခွန်နှင့် ပို့ဆောင်ခကို ငွေရှင်းချိန်တွင် တွက်ချက်ပေးပါမည်။</p>
       </div>
