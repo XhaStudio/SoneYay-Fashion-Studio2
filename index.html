@@ -1,11 +1,11 @@
 
 <!doctype html>
-<html lang="en">
+<html lang="my">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#f6f2ec" />
-  <title>SoneYay Fashion Studio | Curated fashion</title>
+  <title>SoneYay Fashion Studio | ရွေးချယ်ထားသော ဖက်ရှင်များ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -17,12 +17,12 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="#top" aria-label="SoneYay Fashion Studio home"><span class="brand-mark">S</span><span>SoneYay Fashion Studio<span class="brand-dot">.</span></span></a>
-    <nav class="top-nav" aria-label="Primary navigation">
+    <a class="brand" href="#top" aria-label="SoneYay Fashion Studio ပင်မစာမျက်နှာ"><span class="brand-mark">S</span><span>SoneYay Fashion Studio<span class="brand-dot">.</span></span></a>
+    <nav class="top-nav" aria-label="အဓိက လမ်းညွှန်မီနူး">
       <a class="active" href="#shop">ဆိုင်</a>
       <a href="#new">အသစ်များ</a>
       <a href="#edit">ရွေးချယ်မှု</a>
-      <button class="control-panel-tab" id="controlPanelTab" type="button">Control panel</button>
+      <button class="control-panel-tab" id="controlPanelTab" type="button">စီမံခန့်ခွဲမှု</button>
     </nav>
     <div class="header-actions">
       <button class="icon-button" id="searchToggle" aria-label="ရှာဖွေရန်ဖွင့်ပါ">⌕</button>
@@ -40,7 +40,7 @@
     </section>
 
     <section class="shop-toolbar" aria-label="ပစ္စည်းစာရင်း ထိန်းချုပ်မှုများ">
-      <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="Product categories"></div>
+      <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="ပစ္စည်းအမျိုးအစားများ"></div>
       <div class="toolbar-right">
         <label class="search-field" id="searchField"><span>⌕</span><input id="searchInput" type="search" placeholder="ပစ္စည်းရှာရန်" aria-label="ပစ္စည်းရှာရန်" /></label>
         <label class="sort-field">စီရန် <select id="sortSelect" aria-label="ပစ္စည်းများစီရန်"><option value="featured">အထူးရွေးချယ်ထားသော</option><option value="price-low">စျေးနှုန်း နိမ့်မှမြင့်</option><option value="price-high">စျေးနှုန်း မြင့်မှနိမ့်</option></select></label>
@@ -50,37 +50,37 @@
     <section class="control-panel" id="controlPanel" aria-labelledby="controlPanelTitle" hidden>
       <div class="control-panel-heading">
         <div>
-          <p class="eyebrow">Admin workspace</p>
-          <h2 id="controlPanelTitle">Upload a product</h2>
+          <p class="eyebrow">စီမံခန့်ခွဲသူအတွက်</p>
+          <h2 id="controlPanelTitle">ပစ္စည်းတင်ရန်</h2>
         </div>
-        <button class="close-button" id="closeControlPanel" type="button" aria-label="Close control panel">×</button>
+        <button class="close-button" id="closeControlPanel" type="button" aria-label="စီမံခန့်ခွဲမှုကို ပိတ်ရန်">×</button>
       </div>
       <form class="product-upload-form" id="productUploadForm">
-        <label>Item name<input id="itemName" type="text" placeholder="Item-Name" required /></label>
-        <label>Description<textarea id="itemDescription" placeholder="Add description" rows="3" required></textarea></label>
-        <label>Category<select id="itemCategory" required><option value="" selected disabled>Select category</option><option value="Trendy">Trendy</option><option value="Women">Women</option><option value="Men">Men</option><option value="Accessories">Accessories</option><option value="Shoes">Shoes</option></select></label>
+        <label>ပစ္စည်းအမည်<input id="itemName" type="text" placeholder="ပစ္စည်းအမည်" required /></label>
+        <label>ဖော်ပြချက်<textarea id="itemDescription" placeholder="ဖော်ပြချက်ထည့်ပါ" rows="3" required></textarea></label>
+        <label>အမျိုးအစား<select id="itemCategory" required><option value="" selected disabled>အမျိုးအစားရွေးပါ</option><option value="Trendy">ခေတ်စား</option><option value="Women">အမျိုးသမီး</option><option value="Men">အမျိုးသား</option><option value="Accessories">အသုံးအဆောင်</option><option value="Shoes">ဖိနပ်</option></select></label>
         <div class="admin-media-section">
-          <p class="admin-field-title">Thumbnail</p>
+          <p class="admin-field-title">အဓိကပုံ</p>
           <label class="product-media-dropzone thumbnail-dropzone" id="thumbnailDropzone" for="thumbnailInput">
             <input id="thumbnailInput" type="file" accept="image/*,video/*" hidden />
-            <span class="thumbnail-empty" id="thumbnailEmpty"><strong>Drag and drop thumbnail here or click to upload</strong><span>One photo or video</span></span>
-            <span class="thumbnail-preview" id="thumbnailPreview" hidden><img id="thumbnailImage" alt="Thumbnail preview" /><video id="thumbnailVideo" controls muted loop playsinline hidden></video><strong id="thumbnailFileName"></strong></span>
+            <span class="thumbnail-empty" id="thumbnailEmpty"><strong>အဓိကပုံကို ဒီနေရာသို့ ဆွဲချပါ သို့မဟုတ် နှိပ်၍ တင်ပါ</strong><span>ဓာတ်ပုံ သို့မဟုတ် ဗီဒီယိုတစ်ခု</span></span>
+            <span class="thumbnail-preview" id="thumbnailPreview" hidden><img id="thumbnailImage" alt="အဓိကပုံ အစမ်းကြည့်ရန်" /><video id="thumbnailVideo" controls muted loop playsinline hidden></video><strong id="thumbnailFileName"></strong></span>
           </label>
         </div>
         <div class="form-row">
-          <label>Price<input id="itemPrice" type="number" min="0" step="1" placeholder="25,000" required /></label>
-          <label>Stocks<input id="itemStocks" type="number" min="0" step="1" placeholder="10" required /></label>
+          <label>စျေးနှုန်း<input id="itemPrice" type="number" min="0" step="1" placeholder="25,000" required /></label>
+          <label>လက်ကျန်အရေအတွက်<input id="itemStocks" type="number" min="0" step="1" placeholder="10" required /></label>
         </div>
         <label class="product-media-dropzone" id="productMediaDropzone" for="productMedia">
           <input id="productMedia" type="file" accept="image/*,video/*" multiple hidden />
-          <strong>More detail photos, videos</strong>
-          <span>Drag and drop files here or click to upload · Maximum 10 photos and 5 videos</span>
+          <strong>အသေးစိတ်ဓာတ်ပုံများ၊ ဗီဒီယိုများ</strong>
+          <span>ဖိုင်များကို ဒီနေရာသို့ ဆွဲချပါ သို့မဟုတ် နှိပ်၍ တင်ပါ · ဓာတ်ပုံ ၁၀ ပုံနှင့် ဗီဒီယို ၅ ခုအထိ</span>
         </label>
         <div class="selected-media" id="selectedMedia" aria-live="polite"></div>
         <div class="choice-list" id="choiceList"></div>
-        <button class="add-choice-button" id="addChoiceButton" type="button"><span>+</span> Add choice</button>
+        <button class="add-choice-button" id="addChoiceButton" type="button"><span>+</span> ရွေးချယ်စရာထည့်ရန်</button>
         <p class="upload-feedback" id="uploadFeedback" role="status"></p>
-        <button class="upload-product-button" type="submit">Upload product</button>
+        <button class="upload-product-button" type="submit">ပစ္စည်းတင်ရန်</button>
       </form>
     </section>
 
@@ -110,7 +110,7 @@
         <div class="payment-methods" role="tablist" aria-label="ငွေပေးချေမှုနည်းလမ်း">
           <button class="payment-method active" data-method="kbzpay" role="tab" aria-selected="true">KBZPay</button>
           <button class="payment-method" data-method="wavemoney" role="tab" aria-selected="false">WaveMoney</button>
-          <button class="payment-method" data-method="cod" role="tab" aria-selected="false">COD</button>
+          <button class="payment-method" data-method="cod" role="tab" aria-selected="false">အိမ်အရောက်ငွေချေ</button>
         </div>
 
         <div class="payment-account" id="paymentAccount">
@@ -146,7 +146,7 @@
         <div class="order-success" id="orderSuccess" hidden>
           <div class="success-check"><span id="successCheckmark">✓</span></div>
           <p class="success-title">မှာယူမှု ပို့ပြီးပါပြီ!</p>
-          <p class="success-sub" id="successSub">Admin မှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။</p>
+          <p class="success-sub" id="successSub">စီမံခန့်ခွဲသူမှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။</p>
         </div>
       </div>
     </div>
@@ -156,18 +156,18 @@
 
   <div class="admin-dialog-backdrop" id="adminDialogBackdrop" hidden>
     <form class="admin-dialog" id="adminDialog" aria-labelledby="adminDialogTitle">
-      <p class="eyebrow">Restricted area</p>
-      <h2 id="adminDialogTitle">Ask</h2>
-      <p>What is your name?</p>
-      <input id="adminUsername" type="text" autocomplete="username" aria-label="Username" required />
+      <p class="eyebrow">ကန့်သတ်ထားသောနေရာ</p>
+      <h2 id="adminDialogTitle">အတည်ပြုရန်</h2>
+      <p>သင့်အမည်က ဘာလဲ?</p>
+      <input id="adminUsername" type="text" autocomplete="username" aria-label="အသုံးပြုသူအမည်" required />
       <p class="admin-feedback" id="adminFeedback" role="alert"></p>
-      <div class="admin-dialog-actions"><button type="button" id="cancelAdminDialog">Cancel</button><button class="admin-confirm-button" type="submit">Continue</button></div>
+      <div class="admin-dialog-actions"><button type="button" id="cancelAdminDialog">ပယ်ဖျက်ရန်</button><button class="admin-confirm-button" type="submit">ဆက်လုပ်ရန်</button></div>
     </form>
   </div>
 
   <div class="product-detail-backdrop" id="productDetailBackdrop" hidden>
     <section class="product-detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailProductName">
-      <button class="product-detail-close" id="closeProductDetail" type="button" aria-label="Close product details">×</button>
+      <button class="product-detail-close" id="closeProductDetail" type="button" aria-label="ပစ္စည်းအသေးစိတ်ကို ပိတ်ရန်">×</button>
       <div class="detail-gallery" id="detailGallery"></div>
       <div class="detail-content">
         <p class="eyebrow" id="detailProductCategory"></p>
@@ -183,7 +183,7 @@
 
   <template id="productTemplate">
     <article class="product-card">
-      <div class="product-image-wrap"><img class="product-image" alt="" /><video class="product-video" controls muted loop playsinline hidden></video><span class="product-badge" hidden>New</span><span class="product-count" hidden>0</span></div>
+      <div class="product-image-wrap"><img class="product-image" alt="" /><video class="product-video" controls muted loop playsinline hidden></video><span class="product-badge" hidden>အသစ်</span><span class="product-count" hidden>0</span></div>
       <div class="product-details"><div><h3 class="product-name"></h3><p class="product-meta"></p><p class="product-stock"></p></div><strong class="product-price"></strong></div>
       <div class="product-actions"><button class="add-button">အိတ်ထဲထည့်ရန် <span>+</span></button><div class="quantity-controls" hidden><button class="quantity-button decrease" aria-label="အရေအတွက်လျှော့ရန်">−</button><span class="quantity-value">1</span><button class="quantity-button increase" aria-label="အရေအတွက်တိုးရန်">+</button></div></div>
     </article>
@@ -204,6 +204,7 @@
       ? Promise.resolve()
       : firebase.auth().signInAnonymously();
   </script>
+  <script src="./img-loader.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
