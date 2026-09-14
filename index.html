@@ -172,6 +172,7 @@
         <p class="eyebrow" id="detailProductCategory"></p>
         <h2 id="detailProductName"></h2>
         <strong class="detail-price" id="detailProductPrice"></strong>
+        <p class="detail-stock" id="detailProductStock"></p>
         <p class="detail-description" id="detailProductDescription"></p>
         <div class="detail-choices" id="detailChoices"></div>
         <button class="detail-add-button" id="detailAddButton" type="button">အိတ်ထဲထည့်ရန် <span>+</span></button>
@@ -182,7 +183,7 @@
   <template id="productTemplate">
     <article class="product-card">
       <div class="product-image-wrap"><img class="product-image" alt="" /><video class="product-video" controls muted loop playsinline hidden></video><span class="product-badge" hidden>New</span><span class="product-count" hidden>0</span></div>
-      <div class="product-details"><div><h3 class="product-name"></h3><p class="product-meta"></p></div><strong class="product-price"></strong></div>
+      <div class="product-details"><div><h3 class="product-name"></h3><p class="product-meta"></p><p class="product-stock"></p></div><strong class="product-price"></strong></div>
       <div class="product-actions"><button class="add-button">အိတ်ထဲထည့်ရန် <span>+</span></button><div class="quantity-controls" hidden><button class="quantity-button decrease" aria-label="အရေအတွက်လျှော့ရန်">−</button><span class="quantity-value">1</span><button class="quantity-button increase" aria-label="အရေအတွက်တိုးရန်">+</button></div></div>
     </article>
   </template>
