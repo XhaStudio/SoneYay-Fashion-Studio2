@@ -60,32 +60,49 @@ async function updateQuantity(id, change) {
   const product = products.find((item) => item.id === id);
   if (!product) { if (change > 0) notify("လက်ကျန်မရှိပါ။"); return; }
 
-  if (change > 0 && typeof product.id === "string") {
-    try {
-      await window.firebaseReady;
-      const snapshot = await firebase.firestore().collection("products").doc(product.id).get();
-      if (!snapshot.exists) { notify("ဤပစ္စည်း မရှိတော့ပါ။"); return; }
-      const currentStock = Number(snapshot.data().stock);
-      product.stock = Number.isFinite(currentStock) ? Math.max(0, currentStock) : null;
-      if (!hasStock(product)) { notify("လက်ကျန်မရှိပါ။"); renderProducts(); return; }
-    } catch (error) {
-      console.error("Could not check current stock:", error);
-      notify("လက်ကျန်ကို စစ်ဆေး၍မရပါ။ ခဏနေပြီး ထပ်ကြိုးစားပါ။");
-      return;
-    }
-  }
-
-  const availableStock = Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
-  const currentQuantity = cart[id] || 0;
-  const requestedQuantity = Math.max(0, currentQuantity + change);
-  if (change > 0 && requestedQuantity > availableStock) {
+  // Respond to the tap immediately using what we already know locally —
+  // don't make the button wait on a Firestore round-trip before the UI moves.
+  const previousQuantity = cart[id] || 0;
+  const localAvailableStock = Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
+  const requestedQuantity = Math.max(0, previousQuantity + change);
+  if (change > 0 && requestedQuantity > localAvailableStock) {
     notify("ဒီပစ္စည်း၏ လက်ကျန်မလုံလောက်တော့ပါ။");
     renderProducts();
     return;
   }
-  const nextQuantity = Math.min(availableStock, requestedQuantity);
-  if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity;
+  const optimisticQuantity = Math.min(localAvailableStock, requestedQuantity);
+  if (optimisticQuantity === 0) delete cart[id]; else cart[id] = optimisticQuantity;
   renderProducts(); renderCart();
+
+  // Only additions need re-verifying against live stock, and that check now
+  // runs in the background after the click has already been reflected on screen.
+  if (change <= 0 || typeof product.id !== "string") return;
+  try {
+    await window.firebaseReady;
+    const snapshot = await firebase.firestore().collection("products").doc(product.id).get();
+    if (!snapshot.exists) {
+      notify("ဤပစ္စည်း မရှိတော့ပါ။");
+      if (previousQuantity === 0) delete cart[id]; else cart[id] = previousQuantity;
+      renderProducts(); renderCart();
+      return;
+    }
+    const currentStock = Number(snapshot.data().stock);
+    product.stock = Number.isFinite(currentStock) ? Math.max(0, currentStock) : null;
+    const liveAvailableStock = Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
+    if (!hasStock(product) || liveAvailableStock < optimisticQuantity) {
+      notify("လက်ကျန်ပမာဏ ပြောင်းလဲသွားသဖြင့် ပမာဏကို ချိန်ညှိလိုက်ပါသည်။");
+      const correctedQuantity = Math.min(liveAvailableStock, optimisticQuantity);
+      if (correctedQuantity === 0) delete cart[id]; else cart[id] = correctedQuantity;
+      renderProducts(); renderCart();
+    } else {
+      renderProducts(); // refresh the displayed remaining-stock count silently
+    }
+  } catch (error) {
+    console.error("Could not check current stock:", error);
+    // Keep the optimistic quantity rather than reverting on a network hiccup —
+    // checkout re-verifies stock in a transaction (decreasePurchasedStock) anyway.
+    notify("လက်ကျန်ကို ခဏတာ စစ်ဆေး၍မရပါ။ မှာယူချိန်တွင် ထပ်စစ်ဆေးပေးပါမည်။");
+  }
 }
 function cartDetails() { return products.filter((product) => cart[product.id]).map((product) => ({ product, quantity: cart[product.id] })); }
 function renderCart() {
