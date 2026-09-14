@@ -16,8 +16,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
+  <div class="loading-screen" id="loadingScreen" role="status" aria-live="polite">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p id="loadingMessage">ပုံများကို ဖတ်နေသည်...</p>
+  </div>
   <header class="site-header">
-    <a class="brand" href="#top" aria-label="SoneYay Fashion Studio ပင်မစာမျက်နှာ"><span class="brand-mark">S</span><span>SoneYay Fashion Studio<span class="brand-dot">.</span></span></a>
+    <a class="brand" href="#top" aria-label="SoneYay Fashion Studio ပင်မစာမျက်နှာ"><img class="brand-mark" src="./logo.jpg" alt="SoneYay Fashion Studio လိုဂို" /><span>SoneYay Fashion Studio<span class="brand-dot">.</span></span></a>
     <nav class="top-nav" aria-label="အဓိက လမ်းညွှန်မီနူး">
       <a class="active" href="#shop">ဆိုင်</a>
       <a href="#new">အသစ်များ</a>
