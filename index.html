@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="./styles.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
@@ -20,6 +21,7 @@
       <a class="active" href="#shop">ဆိုင်</a>
       <a href="#new">အသစ်များ</a>
       <a href="#edit">ရွေးချယ်မှု</a>
+      <button class="control-panel-tab" id="controlPanelTab" type="button">Control panel</button>
     </nav>
     <div class="header-actions">
       <button class="icon-button" id="searchToggle" aria-label="ရှာဖွေရန်ဖွင့်ပါ">⌕</button>
@@ -42,6 +44,43 @@
         <label class="search-field" id="searchField"><span>⌕</span><input id="searchInput" type="search" placeholder="ပစ္စည်းရှာရန်" aria-label="ပစ္စည်းရှာရန်" /></label>
         <label class="sort-field">စီရန် <select id="sortSelect" aria-label="ပစ္စည်းများစီရန်"><option value="featured">အထူးရွေးချယ်ထားသော</option><option value="price-low">စျေးနှုန်း နိမ့်မှမြင့်</option><option value="price-high">စျေးနှုန်း မြင့်မှနိမ့်</option></select></label>
       </div>
+    </section>
+
+    <section class="control-panel" id="controlPanel" aria-labelledby="controlPanelTitle" hidden>
+      <div class="control-panel-heading">
+        <div>
+          <p class="eyebrow">Admin workspace</p>
+          <h2 id="controlPanelTitle">Upload a product</h2>
+        </div>
+        <button class="close-button" id="closeControlPanel" type="button" aria-label="Close control panel">×</button>
+      </div>
+      <form class="product-upload-form" id="productUploadForm">
+        <label>Item name<input id="itemName" type="text" placeholder="Item-Name" required /></label>
+        <label>Description<textarea id="itemDescription" placeholder="Add description" rows="3" required></textarea></label>
+        <label>Category<select id="itemCategory" required><option value="" selected disabled>Select category</option><option value="Trendy">Trendy</option><option value="Women">Women</option><option value="Men">Men</option><option value="Accessories">Accessories</option><option value="Shoes">Shoes</option></select></label>
+        <div class="admin-media-section">
+          <p class="admin-field-title">Thumbnail</p>
+          <label class="product-media-dropzone thumbnail-dropzone" id="thumbnailDropzone" for="thumbnailInput">
+            <input id="thumbnailInput" type="file" accept="image/*,video/*" hidden />
+            <span class="thumbnail-empty" id="thumbnailEmpty"><strong>Drag and drop thumbnail here or click to upload</strong><span>One photo or video</span></span>
+            <span class="thumbnail-preview" id="thumbnailPreview" hidden><img id="thumbnailImage" alt="Thumbnail preview" /><video id="thumbnailVideo" controls muted loop playsinline hidden></video><strong id="thumbnailFileName"></strong></span>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Price<input id="itemPrice" type="number" min="0" step="1" placeholder="25,000" required /></label>
+          <label>Stocks<input id="itemStocks" type="number" min="0" step="1" placeholder="10" required /></label>
+        </div>
+        <label class="product-media-dropzone" id="productMediaDropzone" for="productMedia">
+          <input id="productMedia" type="file" accept="image/*,video/*" multiple hidden />
+          <strong>More detail photos, videos</strong>
+          <span>Drag and drop files here or click to upload · Maximum 10 photos and 5 videos</span>
+        </label>
+        <div class="selected-media" id="selectedMedia" aria-live="polite"></div>
+        <div class="choice-list" id="choiceList"></div>
+        <button class="add-choice-button" id="addChoiceButton" type="button"><span>+</span> Add choice</button>
+        <p class="upload-feedback" id="uploadFeedback" role="status"></p>
+        <button class="upload-product-button" type="submit">Upload product</button>
+      </form>
     </section>
 
     <section class="catalog" id="catalog" aria-live="polite"></section>
@@ -114,9 +153,35 @@
   <div class="drawer-overlay" id="drawerOverlay"></div>
   <div class="cart-bar" id="cartBar" aria-hidden="true"><div><span class="cart-summary-label"><span class="bag-dot"></span><strong id="cartItemCount">0 ပစ္စည်း</strong> အိတ်ထဲတွင်ရှိသည်</span><span class="cart-total" id="cartTotal">$0</span></div><button id="viewBag">အိတ်ကြည့်ရန် <span>→</span></button></div>
 
+  <div class="admin-dialog-backdrop" id="adminDialogBackdrop" hidden>
+    <form class="admin-dialog" id="adminDialog" aria-labelledby="adminDialogTitle">
+      <p class="eyebrow">Restricted area</p>
+      <h2 id="adminDialogTitle">Ask</h2>
+      <p>What is your name?</p>
+      <input id="adminUsername" type="text" autocomplete="username" aria-label="Username" required />
+      <p class="admin-feedback" id="adminFeedback" role="alert"></p>
+      <div class="admin-dialog-actions"><button type="button" id="cancelAdminDialog">Cancel</button><button class="admin-confirm-button" type="submit">Continue</button></div>
+    </form>
+  </div>
+
+  <div class="product-detail-backdrop" id="productDetailBackdrop" hidden>
+    <section class="product-detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailProductName">
+      <button class="product-detail-close" id="closeProductDetail" type="button" aria-label="Close product details">×</button>
+      <div class="detail-gallery" id="detailGallery"></div>
+      <div class="detail-content">
+        <p class="eyebrow" id="detailProductCategory"></p>
+        <h2 id="detailProductName"></h2>
+        <strong class="detail-price" id="detailProductPrice"></strong>
+        <p class="detail-description" id="detailProductDescription"></p>
+        <div class="detail-choices" id="detailChoices"></div>
+        <button class="detail-add-button" id="detailAddButton" type="button">အိတ်ထဲထည့်ရန် <span>+</span></button>
+      </div>
+    </section>
+  </div>
+
   <template id="productTemplate">
     <article class="product-card">
-      <div class="product-image-wrap"><img class="product-image" alt="" /><span class="product-badge" hidden>New</span><span class="product-count" hidden>0</span></div>
+      <div class="product-image-wrap"><img class="product-image" alt="" /><video class="product-video" controls muted loop playsinline hidden></video><span class="product-badge" hidden>New</span><span class="product-count" hidden>0</span></div>
       <div class="product-details"><div><h3 class="product-name"></h3><p class="product-meta"></p></div><strong class="product-price"></strong></div>
       <div class="product-actions"><button class="add-button">အိတ်ထဲထည့်ရန် <span>+</span></button><div class="quantity-controls" hidden><button class="quantity-button decrease" aria-label="အရေအတွက်လျှော့ရန်">−</button><span class="quantity-value">1</span><button class="quantity-button increase" aria-label="အရေအတွက်တိုးရန်">+</button></div></div>
     </article>
@@ -133,6 +198,9 @@
       measurementId: "G-1040H54Y9P",
     };
     firebase.initializeApp(firebaseConfig);
+    window.firebaseReady = firebase.auth().currentUser
+      ? Promise.resolve()
+      : firebase.auth().signInAnonymously();
   </script>
   <script src="./app.js"></script>
 </body>
