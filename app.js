@@ -173,6 +173,36 @@ function buildOrder() {
   };
 }
 
+// The backend can be a Render free-tier instance that sleeps when idle, so
+// the first request after a while can be slow to wake up and sometimes
+// drops the connection before a response comes back (browsers surface this
+// as a generic "Failed to fetch", even though the backend may finish the
+// request anyway). fetchWithRetry retries a couple of times on that kind of
+// network-level failure instead of immediately telling the customer it failed.
+function fetchWithRetry(url, options, attempts = 3, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const attempt = (remaining) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      fetch(url, { ...options, signal: controller.signal })
+        .then((response) => { clearTimeout(timer); resolve(response); })
+        .catch((err) => {
+          clearTimeout(timer);
+          if (remaining > 1) {
+            setTimeout(() => attempt(remaining - 1), 1500);
+          } else {
+            reject(err);
+          }
+        });
+    };
+    attempt(attempts);
+  });
+}
+
+// Fire-and-forget ping as soon as the app opens, so a sleeping backend has
+// a head start waking up before the customer even reaches checkout.
+fetch(`${API_BASE_URL}/`, { method: "GET" }).catch(() => {});
+
 function resetCartAndForm() {
   cart = {}; renderProducts(); renderCart(); clearScreenshot(); setPaymentMethod("kbzpay");
   custNameInput.value = ""; custPhoneInput.value = ""; custAddressInput.value = "";
@@ -252,6 +282,11 @@ submitPaymentButton.addEventListener("click", async () => {
   formData.append("order", JSON.stringify(order));
   formData.append("telegram_user_id", String(user.id));
   formData.append("username", user.username);
+  // Stable per-checkout-attempt id: if the request below has to be retried
+  // (see fetchWithRetry), the backend can recognize repeats of this exact
+  // attempt and avoid creating a duplicate order / duplicate admin message.
+  const clientOrderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${user.id}-${Date.now()}-${Math.random()}`;
+  formData.append("client_order_id", clientOrderId);
   if (selectedScreenshot) formData.append("photo", selectedScreenshot, selectedScreenshot.name);
 
   submitPaymentButton.disabled = true;
@@ -260,7 +295,7 @@ submitPaymentButton.addEventListener("click", async () => {
 
   try {
     const purchasedDetails = cartDetails();
-    const response = await fetch(`${API_BASE_URL}/api/order`, { method: "POST", body: formData });
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/order`, { method: "POST", body: formData });
     const result = await response.json().catch(() => null);
     if (!response.ok || !result || !result.ok) {
       throw new Error((result && result.error) || `HTTP ${response.status}`);
@@ -343,6 +378,30 @@ function showControlPanel() {
 
 function renderSelectedMedia() {
   selectedMedia.innerHTML = selectedProductMedia.map((file) => `<span>${file.type.startsWith("video/") ? "Video" : "Photo"}: ${file.name}</span>`).join("");
+}
+
+// Firestore has no built-in file storage here, so images are persisted as
+// compressed base64 data URLs directly on the product document (videos are
+// left as session-only blob previews — too large to store this way).
+function imageFileToDataUrl(file, maxDim = 1000, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Could not read image"));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function setThumbnail(file) {
@@ -470,14 +529,36 @@ productUploadForm.addEventListener("submit", async (event) => {
   uploadFeedback.textContent = "Saving product to Firebase...";
   try {
     await window.firebaseReady;
-    const media = selectedProductMedia.map((file) => ({ name: file.name, type: file.type }));
-    const thumbnail = selectedThumbnail ? { name: selectedThumbnail.name, type: selectedThumbnail.type } : null;
-    const savedProduct = { ...product, media, thumbnail, badge: "အသစ်", createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-    await firebase.firestore().collection("products").doc(productId).set(savedProduct);
     const cardMedia = selectedThumbnail || selectedProductMedia[0];
-    const detailMediaUrls = selectedProductMedia.map((file) => ({ url: URL.createObjectURL(file), type: file.type, name: file.name }));
-    if (selectedThumbnail) detailMediaUrls.unshift({ url: URL.createObjectURL(selectedThumbnail), type: selectedThumbnail.type, name: selectedThumbnail.name });
-    const newProduct = { ...savedProduct, image: URL.createObjectURL(cardMedia), mediaType: cardMedia.type.startsWith("video/") ? "video" : "image", detailMediaUrls };
+    const cardIsVideo = cardMedia.type.startsWith("video/");
+    if (cardIsVideo) {
+      uploadFeedback.textContent = "Videos can only be used as detail photos for now — pick an image as the thumbnail so it can be saved permanently.";
+      uploadProductButton.disabled = false;
+      uploadProductButton.textContent = "Upload product";
+      return;
+    }
+
+    // Only images are persisted (compressed to keep each product doc under
+    // Firestore's 1MB limit); videos stay as local-only previews for now.
+    const imageFiles = selectedThumbnail ? [selectedThumbnail, ...selectedProductMedia] : selectedProductMedia;
+    const dataUrls = await Promise.all(imageFiles.filter((file) => file.type.startsWith("image/")).map((file) => imageFileToDataUrl(file)));
+    const totalBytes = dataUrls.reduce((sum, url) => sum + url.length, 0);
+    if (totalBytes > 900000) {
+      // Too many/too large photos for one Firestore doc — keep the thumbnail only.
+      dataUrls.length = 1;
+      uploadFeedback.textContent = "Photos were large, so only the thumbnail was kept to fit Firebase's size limit.";
+    }
+    const detailMediaUrls = dataUrls.map((url, i) => ({ url, type: "image/jpeg", name: imageFiles[i] ? imageFiles[i].name : `photo-${i}` }));
+    const savedProduct = {
+      ...product,
+      image: dataUrls[0],
+      mediaType: "image",
+      detailMediaUrls,
+      badge: "အသစ်",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    await firebase.firestore().collection("products").doc(productId).set(savedProduct);
+    const newProduct = { ...savedProduct };
     products.unshift(newProduct);
     scheduleStockOutCleanup(newProduct);
     renderProducts();
@@ -511,8 +592,7 @@ async function loadSavedProducts() {
     const snapshot = await firebase.firestore().collection("products").get();
     const savedProducts = snapshot.docs.map((doc) => {
       const data = doc.data();
-      const image = typeof data.image === "string" && !data.image.includes("firebasestorage.googleapis.com") ? data.image : "";
-      return { ...data, id: doc.id, image };
+      return { ...data, id: doc.id, image: typeof data.image === "string" ? data.image : "" };
     });
     products = [...savedProducts, ...products.filter((product) => !savedProducts.some((savedProduct) => savedProduct.id === product.id))];
     savedProducts.forEach(scheduleStockOutCleanup);
