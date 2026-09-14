@@ -7,8 +7,26 @@ let activeCategory = "All", searchTerm = "", cart = {};
 const $ = (selector) => document.querySelector(selector);
 const categoryTabs = $("#categoryTabs"), catalog = $("#catalog"), emptyState = $("#emptyState"), template = $("#productTemplate");
 const searchInput = $("#searchInput"), sortSelect = $("#sortSelect"), cartDrawer = $("#cartDrawer"), drawerOverlay = $("#drawerOverlay"), drawerItems = $("#drawerItems");
+const loadingScreen = $("#loadingScreen"), loadingMessage = $("#loadingMessage");
 const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
 const STOCK_OUT_GRACE_MS = 4 * 60 * 60 * 1000;
+function showLoading(message) {
+  loadingMessage.textContent = message;
+  loadingScreen.classList.remove("is-hidden");
+}
+function hideLoading() { loadingScreen.classList.add("is-hidden"); }
+function preloadProductImages(productList) {
+  const imageUrls = productList.flatMap((product) => [
+    product.image,
+    ...(Array.isArray(product.detailMediaUrls) ? product.detailMediaUrls.map((media) => media.url) : [])
+  ]).filter((url, index, urls) => typeof url === "string" && url && urls.indexOf(url) === index);
+  return Promise.all(imageUrls.map((url) => new Promise((resolve) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = resolve;
+    image.src = url;
+  })));
+}
 function hasStock(product) {
   if (!Object.prototype.hasOwnProperty.call(product, "stock")) return true;
   return product.stock !== null && String(product.stock).trim() !== "" && Number(product.stock) > 0;
@@ -38,15 +56,35 @@ function renderProducts() {
     addButton.addEventListener("click", () => updateQuantity(product.id, 1)); card.querySelector(".decrease").addEventListener("click", () => updateQuantity(product.id, -1)); card.querySelector(".increase").addEventListener("click", () => updateQuantity(product.id, 1)); catalog.appendChild(card);
   });
 }
-function updateQuantity(id, change) {
+async function updateQuantity(id, change) {
   const product = products.find((item) => item.id === id);
-  const availableStock = product && Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
-  if (change > 0 && (!product || !hasStock(product))) { notify("လက်ကျန်မရှိပါ။"); return; }
+  if (!product) { if (change > 0) notify("လက်ကျန်မရှိပါ။"); return; }
+
+  if (change > 0 && typeof product.id === "string") {
+    try {
+      await window.firebaseReady;
+      const snapshot = await firebase.firestore().collection("products").doc(product.id).get();
+      if (!snapshot.exists) { notify("ဤပစ္စည်း မရှိတော့ပါ။"); return; }
+      const currentStock = Number(snapshot.data().stock);
+      product.stock = Number.isFinite(currentStock) ? Math.max(0, currentStock) : null;
+      if (!hasStock(product)) { notify("လက်ကျန်မရှိပါ။"); renderProducts(); return; }
+    } catch (error) {
+      console.error("Could not check current stock:", error);
+      notify("လက်ကျန်ကို စစ်ဆေး၍မရပါ။ ခဏနေပြီး ထပ်ကြိုးစားပါ။");
+      return;
+    }
+  }
+
+  const availableStock = Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
   const currentQuantity = cart[id] || 0;
   const requestedQuantity = Math.max(0, currentQuantity + change);
+  if (change > 0 && requestedQuantity > availableStock) {
+    notify("ဒီပစ္စည်း၏ လက်ကျန်မလုံလောက်တော့ပါ။");
+    renderProducts();
+    return;
+  }
   const nextQuantity = Math.min(availableStock, requestedQuantity);
   if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity;
-  if (change > 0 && requestedQuantity > availableStock) notify("ဒီပစ္စည်း၏ လက်ကျန်မလုံလောက်တော့ပါ။");
   renderProducts(); renderCart();
 }
 function cartDetails() { return products.filter((product) => cart[product.id]).map((product) => ({ product, quantity: cart[product.id] })); }
@@ -55,7 +93,7 @@ function renderCart() {
   $("#bagCount").textContent = String(itemCount); $("#cartItemCount").textContent = `${itemCount} ပစ္စည်း`; $("#cartTotal").textContent = money(total); $("#drawerTotal").textContent = money(total);
   $("#cartBar").classList.toggle("visible", itemCount > 0); $("#cartBar").setAttribute("aria-hidden", String(itemCount === 0));
   drawerItems.innerHTML = details.length ? details.map(({ product, quantity }) => `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${money(product.price)}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`).join("") : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
-  drawerItems.querySelectorAll("button[data-id]").forEach((button) => button.addEventListener("click", () => updateQuantity(Number(button.dataset.id), Number(button.dataset.change))));
+  drawerItems.querySelectorAll("button[data-id]").forEach((button) => button.addEventListener("click", () => updateQuantity(button.dataset.id, Number(button.dataset.change))));
 }
 function setDrawer(open) { cartDrawer.classList.toggle("open", open); drawerOverlay.classList.toggle("open", open); cartDrawer.setAttribute("aria-hidden", String(!open)); if (!open) showCheckoutStep(); }
 
@@ -527,6 +565,7 @@ productUploadForm.addEventListener("submit", async (event) => {
   uploadProductButton.disabled = true;
   uploadProductButton.textContent = "တင်နေသည်...";
   uploadFeedback.textContent = "ပစ္စည်းကို Firebase သို့ သိမ်းနေသည်...";
+  showLoading("ပစ္စည်းအသစ်ကို တင်နေသည်...");
   try {
     await window.firebaseReady;
     const cardMedia = selectedThumbnail || selectedProductMedia[0];
@@ -576,6 +615,7 @@ productUploadForm.addEventListener("submit", async (event) => {
   } finally {
     uploadProductButton.disabled = false;
     uploadProductButton.textContent = "ပစ္စည်းတင်ရန်";
+    hideLoading();
   }
 });
 $("#closeProductDetail").addEventListener("click", closeProductDetail);
@@ -589,11 +629,14 @@ document.addEventListener("keydown", (event) => { if (event.key === "Escape" && 
 async function loadSavedProducts() {
   try {
     const savedProducts = await window.firebaseImageLoader.loadProducts("products");
+    await preloadProductImages(savedProducts);
     products = [...savedProducts, ...products.filter((product) => !savedProducts.some((savedProduct) => savedProduct.id === product.id))];
     savedProducts.forEach(scheduleStockOutCleanup);
     renderProducts();
   } catch (error) {
     console.error("Could not load saved products:", error);
+  } finally {
+    hideLoading();
   }
 }
 renderCategories(); renderProducts(); renderCart(); setPaymentMethod("kbzpay");
