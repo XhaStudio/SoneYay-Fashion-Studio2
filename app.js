@@ -1,5 +1,12 @@
 let products = [
-
+  { id: 1, name: "ပုံသွင်း ဘလေဇာ", category: "Trendy", meta: "Atelier N° 8 · အနက်", price: 312000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=900&q=85", badge: "အသစ်" },
+  { id: 2, name: "လီနင်ရှည်ဝတ်စုံ", category: "Women", meta: "Lune Studio · အဖြူဖျော့", price: 201600, image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=900&q=85" },
+  { id: 3, name: "အေးမြသော ရှပ်အင်္ကျီ", category: "Men", meta: "Common Ground · အစိမ်းဖျော့", price: 151200, image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=85", badge: "အသစ်" },
+  { id: 4, name: "သားရေပခုံးအိတ်", category: "Accessories", meta: "Forma · ကော်ဖီရောင်", price: 260400, image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85" },
+  { id: 5, name: "နေ့စဉ်ဝတ် ဘောင်းဘီရှည်", category: "Women", meta: "Still Life · ဒင်နင်", price: 184800, image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=85" },
+  { id: 6, name: "ခေတ်ဟောင်း စနီကာ", category: "Shoes", meta: "Reebok · အဖြူဖျော့", price: 231000, image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85" },
+  { id: 7, name: "မီရီနိုချည် ပိုလို", category: "Men", meta: "Norse Project · ကုလားအုတ်ရောင်", price: 220500, image: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=900&q=85" },
+  { id: 8, name: "ကိုယ်ထည်ပါ နေကာမျက်မှန်", category: "Accessories", meta: "Onda · အညိုရောင်", price: 113400, image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=85" }
 ];
 const categories = ["All", "Trendy", "Women", "Men", "Accessories", "Shoes"];
 const categoryLabels = { All: "အားလုံး", Trendy: "ခေတ်စား", Women: "အမျိုးသမီး", Men: "အမျိုးသား", Accessories: "အသုံးအဆောင်", Shoes: "ဖိနပ်" };
@@ -8,6 +15,12 @@ const $ = (selector) => document.querySelector(selector);
 const categoryTabs = $("#categoryTabs"), catalog = $("#catalog"), emptyState = $("#emptyState"), template = $("#productTemplate");
 const searchInput = $("#searchInput"), sortSelect = $("#sortSelect"), cartDrawer = $("#cartDrawer"), drawerOverlay = $("#drawerOverlay"), drawerItems = $("#drawerItems");
 const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
+const STOCK_OUT_GRACE_MS = 4 * 60 * 60 * 1000;
+function hasStock(product) {
+  if (!Object.prototype.hasOwnProperty.call(product, "stock")) return true;
+  return product.stock !== null && String(product.stock).trim() !== "" && Number(product.stock) > 0;
+}
+function isStockOut(product) { return Object.prototype.hasOwnProperty.call(product, "stock") && !hasStock(product); }
 function renderCategories() { categoryTabs.innerHTML = categories.map((category) => `<button class="category-tab ${category === activeCategory ? "active" : ""}" data-category="${category}" role="tab" aria-selected="${category === activeCategory}">${categoryLabels[category]}</button>`).join(""); }
 function visibleProducts() { return products.filter((product) => (activeCategory === "All" || product.category === activeCategory) && `${product.name} ${product.category} ${product.meta}`.toLowerCase().includes(searchTerm.toLowerCase())).sort((first, second) => sortSelect.value === "price-low" ? first.price - second.price : sortSelect.value === "price-high" ? second.price - first.price : 0); }
 function renderProducts() {
@@ -16,9 +29,14 @@ function renderProducts() {
     const image = card.querySelector(".product-image"); const video = card.querySelector(".product-video");
     if (product.mediaType === "video" && product.image) { image.hidden = true; video.hidden = false; video.src = product.image; } else if (product.image) { image.src = product.image; image.alt = product.name; } else { image.hidden = true; video.hidden = true; }
     card.querySelector(".product-name").textContent = product.name; card.querySelector(".product-meta").textContent = product.meta; card.querySelector(".product-price").textContent = money(product.price);
+    card.querySelector(".product-stock").textContent = Number.isFinite(Number(product.stock)) ? `Stock: ${Math.max(0, Number(product.stock) - quantity)}` : "";
     const badge = card.querySelector(".product-badge"); if (product.badge) { badge.hidden = false; badge.textContent = product.badge; }
     const count = card.querySelector(".product-count"); count.hidden = quantity === 0; count.textContent = String(quantity);
     const addButton = card.querySelector(".add-button"), controls = card.querySelector(".quantity-controls"), quantityValue = card.querySelector(".quantity-value");
+    const availableStock = Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
+    const stockOut = !hasStock(product) || availableStock <= quantity;
+    addButton.disabled = stockOut;
+    if (stockOut) addButton.textContent = "Stock out!";
     if (quantity > 0) { addButton.hidden = true; controls.hidden = false; quantityValue.textContent = String(quantity); }
     card.querySelector(".product-card").addEventListener("click", (event) => {
       if (event.target.closest("button")) return;
@@ -27,7 +45,17 @@ function renderProducts() {
     addButton.addEventListener("click", () => updateQuantity(product.id, 1)); card.querySelector(".decrease").addEventListener("click", () => updateQuantity(product.id, -1)); card.querySelector(".increase").addEventListener("click", () => updateQuantity(product.id, 1)); catalog.appendChild(card);
   });
 }
-function updateQuantity(id, change) { const nextQuantity = Math.max(0, (cart[id] || 0) + change); if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity; renderProducts(); renderCart(); }
+function updateQuantity(id, change) {
+  const product = products.find((item) => item.id === id);
+  const availableStock = product && Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
+  if (change > 0 && (!product || !hasStock(product))) { notify("Stock out!"); return; }
+  const currentQuantity = cart[id] || 0;
+  const requestedQuantity = Math.max(0, currentQuantity + change);
+  const nextQuantity = Math.min(availableStock, requestedQuantity);
+  if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity;
+  if (change > 0 && requestedQuantity > availableStock) notify("ဒီပစ္စည်း၏ stock မလုံလောက်တော့ပါ။");
+  renderProducts(); renderCart();
+}
 function cartDetails() { return products.filter((product) => cart[product.id]).map((product) => ({ product, quantity: cart[product.id] })); }
 function renderCart() {
   const details = cartDetails(), itemCount = details.reduce((sum, item) => sum + item.quantity, 0), total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -163,6 +191,59 @@ function showOrderSuccess(message) {
   orderSuccess.hidden = false;
 }
 
+function stockOutTimestamp(product) {
+  if (!product.stockOutAt) return null;
+  if (typeof product.stockOutAt.toDate === "function") return product.stockOutAt.toDate().getTime();
+  if (product.stockOutAt instanceof Date) return product.stockOutAt.getTime();
+  if (typeof product.stockOutAt === "number") return product.stockOutAt;
+  return null;
+}
+
+async function removeStockOutProduct(product) {
+  if (typeof product.id === "string") {
+    await window.firebaseReady;
+    await firebase.firestore().collection("products").doc(product.id).delete();
+  }
+  products = products.filter((item) => item.id !== product.id);
+  delete cart[product.id];
+  renderProducts();
+  renderCart();
+}
+
+function scheduleStockOutCleanup(product) {
+  if (!isStockOut(product) || typeof product.id !== "string") return;
+  const stockOutAt = stockOutTimestamp(product);
+  const startedAt = stockOutAt || Date.now();
+  if (!stockOutAt) {
+    firebase.firestore().collection("products").doc(product.id).update({ stockOutAt: firebase.firestore.FieldValue.serverTimestamp() }).catch((error) => console.error("Could not start stock-out timer:", error));
+  }
+  const remaining = Math.max(0, startedAt + STOCK_OUT_GRACE_MS - Date.now());
+  if (remaining === 0) removeStockOutProduct(product).catch((error) => console.error("Could not remove stock-out product:", error));
+  else setTimeout(() => removeStockOutProduct(product).catch((error) => console.error("Could not remove stock-out product:", error)), remaining);
+}
+
+async function decreasePurchasedStock(details) {
+  await window.firebaseReady;
+  const firestore = firebase.firestore();
+  await Promise.all(details.filter(({ product }) => typeof product.id === "string").map(({ product, quantity }) => {
+    const productRef = firestore.collection("products").doc(product.id);
+    return firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(productRef);
+      if (!snapshot.exists) return;
+      const currentStock = Number(snapshot.data().stock);
+      if (!Number.isFinite(currentStock) || currentStock < quantity) throw new Error(`${product.name} stock is no longer available`);
+      const nextStock = currentStock - quantity;
+      transaction.update(productRef, { stock: nextStock, ...(nextStock <= 0 ? { stockOutAt: firebase.firestore.FieldValue.serverTimestamp() } : {}) });
+    });
+  }));
+  details.forEach(({ product, quantity }) => {
+    if (Number.isFinite(Number(product.stock))) {
+      product.stock = Math.max(0, Number(product.stock) - quantity);
+      if (product.stock === 0) { product.stockOutAt = new Date(); scheduleStockOutCleanup(product); }
+    }
+  });
+}
+
 submitPaymentButton.addEventListener("click", async () => {
   if (Object.keys(cart).length === 0) return;
   if (selectedPaymentMethod !== "cod" && !selectedScreenshot) return;
@@ -185,11 +266,13 @@ submitPaymentButton.addEventListener("click", async () => {
   submitPaymentButton.textContent = "ပို့နေသည်...";
 
   try {
+    const purchasedDetails = cartDetails();
     const response = await fetch(`${API_BASE_URL}/api/order`, { method: "POST", body: formData });
     const result = await response.json().catch(() => null);
     if (!response.ok || !result || !result.ok) {
       throw new Error((result && result.error) || `HTTP ${response.status}`);
     }
+    await decreasePurchasedStock(purchasedDetails);
 
     const message = selectedPaymentMethod === "cod"
       ? "ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။"
@@ -203,7 +286,9 @@ submitPaymentButton.addEventListener("click", async () => {
     }, 2200);
   } catch (err) {
     console.error(err);
-    notify("မှာယူမှု ပို့၍မရပါ — ကွန်ရက် စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။ (" + err.message + ")");
+    notify(err.message.includes("stock is no longer available")
+      ? "Stock ပြောင်းလဲသွားပါပြီ။ ပစ္စည်းအရေအတွက်ကို ပြန်စစ်ပြီး ထပ်မှာယူပါ။"
+      : "မှာယူမှု ပို့၍မရပါ — ကွန်ရက် စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။ (" + err.message + ")");
   } finally {
     submitPaymentButton.disabled = false;
     submitPaymentButton.classList.remove("is-loading");
@@ -305,6 +390,10 @@ function openProductDetail(product) {
   detailProductCategory.textContent = categoryLabels[product.category] || product.category || "Product";
   detailProductName.textContent = product.name;
   detailProductPrice.textContent = money(product.price);
+  const stockOut = !hasStock(product) || Number(product.stock) <= (cart[product.id] || 0);
+  detailProductStock.textContent = stockOut ? "Stock out!" : (Number.isFinite(Number(product.stock)) ? `Stock: ${Math.max(0, Number(product.stock) - (cart[product.id] || 0))}` : "");
+  detailAddButton.disabled = stockOut;
+  detailAddButton.innerHTML = stockOut ? "Stock out!" : "အိတ်ထဲထည့်ရန် <span>+</span>";
   detailProductDescription.textContent = product.meta || "";
   detailChoices.innerHTML = (product.choices || []).map((choice, index) => `<label><input type="radio" name="detail-choice" value="${choice}" ${index === 0 ? "checked" : ""} /> <span>${choice}</span></label>`).join("");
   const galleryItems = [];
@@ -395,7 +484,9 @@ productUploadForm.addEventListener("submit", async (event) => {
     const cardMedia = selectedThumbnail || selectedProductMedia[0];
     const detailMediaUrls = selectedProductMedia.map((file) => ({ url: URL.createObjectURL(file), type: file.type, name: file.name }));
     if (selectedThumbnail) detailMediaUrls.unshift({ url: URL.createObjectURL(selectedThumbnail), type: selectedThumbnail.type, name: selectedThumbnail.name });
-    products.unshift({ ...savedProduct, image: URL.createObjectURL(cardMedia), mediaType: cardMedia.type.startsWith("video/") ? "video" : "image", detailMediaUrls });
+    const newProduct = { ...savedProduct, image: URL.createObjectURL(cardMedia), mediaType: cardMedia.type.startsWith("video/") ? "video" : "image", detailMediaUrls };
+    products.unshift(newProduct);
+    scheduleStockOutCleanup(newProduct);
     renderProducts();
     uploadFeedback.textContent = "Product uploaded successfully.";
     productUploadForm.reset();
@@ -431,6 +522,7 @@ async function loadSavedProducts() {
       return { ...data, id: doc.id, image };
     });
     products = [...savedProducts, ...products.filter((product) => !savedProducts.some((savedProduct) => savedProduct.id === product.id))];
+    savedProducts.forEach(scheduleStockOutCleanup);
     renderProducts();
   } catch (error) {
     console.error("Could not load saved products:", error);
