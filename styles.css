@@ -16,6 +16,18 @@
 }
 
 * { box-sizing: border-box; }
+.loading-screen {
+  align-items: center; background: rgba(246, 242, 236, .72); backdrop-filter: blur(9px);
+  display: flex; flex-direction: column; gap: 14px; inset: 0; justify-content: center;
+  position: fixed; transition: opacity .3s ease, visibility .3s ease; visibility: visible; z-index: 100;
+}
+.loading-screen.is-hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+.loading-spinner {
+  animation: loadingSpin .85s linear infinite; border: 4px solid rgba(208, 91, 58, .2);
+  border-radius: 50%; border-top-color: var(--coral); height: 46px; width: 46px;
+}
+.loading-screen p { color: var(--coral); font-size: 13px; font-weight: 700; margin: 0; }
+@keyframes loadingSpin { to { transform: rotate(360deg); } }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; }
@@ -41,9 +53,7 @@ img { max-width: 100%; }
 }
 .brand { align-items: center; display: flex; font-size: 17px; font-weight: 700; gap: 9px; letter-spacing: -.02em; }
 .brand-mark {
-  align-items: center; background: var(--ink); border-radius: 8px; color: var(--paper);
-  display: inline-flex; font-family: var(--serif); font-size: 15px; height: 32px;
-  justify-content: center; transform: rotate(-6deg); width: 32px;
+  border-radius: 8px; display: block; height: 32px; object-fit: cover; width: 32px;
 }
 .brand-dot { color: var(--coral); }
 .top-nav { display: flex; gap: 30px; margin-left: 60px; }
