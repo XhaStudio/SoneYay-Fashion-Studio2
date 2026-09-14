@@ -22,14 +22,14 @@ function renderProducts() {
     const image = card.querySelector(".product-image"); const video = card.querySelector(".product-video");
     if (product.mediaType === "video" && product.image) { image.hidden = true; video.hidden = false; video.src = product.image; } else if (product.image) { image.src = product.image; image.alt = product.name; } else { image.hidden = true; video.hidden = true; }
     card.querySelector(".product-name").textContent = product.name; card.querySelector(".product-meta").textContent = product.meta; card.querySelector(".product-price").textContent = money(product.price);
-    card.querySelector(".product-stock").textContent = Number.isFinite(Number(product.stock)) ? `Stock: ${Math.max(0, Number(product.stock) - quantity)}` : "";
+    card.querySelector(".product-stock").textContent = Number.isFinite(Number(product.stock)) ? `လက်ကျန်: ${Math.max(0, Number(product.stock) - quantity)}` : "";
     const badge = card.querySelector(".product-badge"); if (product.badge) { badge.hidden = false; badge.textContent = product.badge; }
     const count = card.querySelector(".product-count"); count.hidden = quantity === 0; count.textContent = String(quantity);
     const addButton = card.querySelector(".add-button"), controls = card.querySelector(".quantity-controls"), quantityValue = card.querySelector(".quantity-value");
     const availableStock = Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
     const stockOut = !hasStock(product) || availableStock <= quantity;
     addButton.disabled = stockOut;
-    if (stockOut) addButton.textContent = "Stock out!";
+    if (stockOut) addButton.textContent = "လက်ကျန်မရှိပါ";
     if (quantity > 0) { addButton.hidden = true; controls.hidden = false; quantityValue.textContent = String(quantity); }
     card.querySelector(".product-card").addEventListener("click", (event) => {
       if (event.target.closest("button")) return;
@@ -41,12 +41,12 @@ function renderProducts() {
 function updateQuantity(id, change) {
   const product = products.find((item) => item.id === id);
   const availableStock = product && Number.isFinite(Number(product.stock)) ? Math.max(0, Number(product.stock)) : Infinity;
-  if (change > 0 && (!product || !hasStock(product))) { notify("Stock out!"); return; }
+  if (change > 0 && (!product || !hasStock(product))) { notify("လက်ကျန်မရှိပါ။"); return; }
   const currentQuantity = cart[id] || 0;
   const requestedQuantity = Math.max(0, currentQuantity + change);
   const nextQuantity = Math.min(availableStock, requestedQuantity);
   if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity;
-  if (change > 0 && requestedQuantity > availableStock) notify("ဒီပစ္စည်း၏ stock မလုံလောက်တော့ပါ။");
+  if (change > 0 && requestedQuantity > availableStock) notify("ဒီပစ္စည်း၏ လက်ကျန်မလုံလောက်တော့ပါ။");
   renderProducts(); renderCart();
 }
 function cartDetails() { return products.filter((product) => cart[product.id]).map((product) => ({ product, quantity: cart[product.id] })); }
@@ -304,7 +304,7 @@ submitPaymentButton.addEventListener("click", async () => {
 
     const message = selectedPaymentMethod === "cod"
       ? "ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။"
-      : "Admin မှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။";
+      : "စီမံခန့်ခွဲသူမှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။";
     showOrderSuccess(message);
 
     setTimeout(() => {
@@ -315,8 +315,8 @@ submitPaymentButton.addEventListener("click", async () => {
   } catch (err) {
     console.error(err);
     notify(err.message.includes("stock is no longer available")
-      ? "Stock ပြောင်းလဲသွားပါပြီ။ ပစ္စည်းအရေအတွက်ကို ပြန်စစ်ပြီး ထပ်မှာယူပါ။"
-      : "မှာယူမှု ပို့၍မရပါ — ကွန်ရက် စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။ (" + err.message + ")");
+      ? "လက်ကျန် ပြောင်းလဲသွားပါပြီ။ ပစ္စည်းအရေအတွက်ကို ပြန်စစ်ပြီး ထပ်မှာယူပါ။"
+      : "မှာယူမှု ပို့၍မရပါ — ကွန်ရက်ကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။");
   } finally {
     submitPaymentButton.disabled = false;
     submitPaymentButton.classList.remove("is-loading");
@@ -377,7 +377,7 @@ function showControlPanel() {
 }
 
 function renderSelectedMedia() {
-  selectedMedia.innerHTML = selectedProductMedia.map((file) => `<span>${file.type.startsWith("video/") ? "Video" : "Photo"}: ${file.name}</span>`).join("");
+  selectedMedia.innerHTML = selectedProductMedia.map((file) => `<span>${file.type.startsWith("video/") ? "ဗီဒီယို" : "ဓာတ်ပုံ"}: ${file.name}</span>`).join("");
 }
 
 // Firestore has no built-in file storage here, so images are persisted as
@@ -406,7 +406,7 @@ function imageFileToDataUrl(file, maxDim = 1000, quality = 0.72) {
 
 function setThumbnail(file) {
   if (!file || (!file.type.startsWith("image/") && !file.type.startsWith("video/"))) {
-    uploadFeedback.textContent = "Thumbnail must be a photo or video.";
+    uploadFeedback.textContent = "အဓိကပုံသည် ဓာတ်ပုံ သို့မဟုတ် ဗီဒီယို ဖြစ်ရပါမည်။";
     return;
   }
   selectedThumbnail = file;
@@ -432,20 +432,20 @@ function clearThumbnail() {
 function addChoiceRow() {
   const row = document.createElement("div");
   row.className = "choice-row";
-  row.innerHTML = `<input class="choice-input" type="text" placeholder="Item-Name or colour" aria-label="Item name or colour choice" required /><button class="remove-choice-button" type="button" aria-label="Remove choice">×</button>`;
+  row.innerHTML = `<input class="choice-input" type="text" placeholder="ပစ္စည်းအမည် သို့မဟုတ် အရောင်" aria-label="ပစ္စည်းအမည် သို့မဟုတ် အရောင်ရွေးချယ်စရာ" required /><button class="remove-choice-button" type="button" aria-label="ရွေးချယ်စရာကို ဖယ်ရန်">×</button>`;
   row.querySelector(".remove-choice-button").addEventListener("click", () => row.remove());
   choiceList.appendChild(row);
 }
 
 function openProductDetail(product) {
   activeDetailProduct = product;
-  detailProductCategory.textContent = categoryLabels[product.category] || product.category || "Product";
+  detailProductCategory.textContent = categoryLabels[product.category] || product.category || "ပစ္စည်း";
   detailProductName.textContent = product.name;
   detailProductPrice.textContent = money(product.price);
   const stockOut = !hasStock(product) || Number(product.stock) <= (cart[product.id] || 0);
-  detailProductStock.textContent = stockOut ? "Stock out!" : (Number.isFinite(Number(product.stock)) ? `Stock: ${Math.max(0, Number(product.stock) - (cart[product.id] || 0))}` : "");
+  detailProductStock.textContent = stockOut ? "လက်ကျန်မရှိပါ" : (Number.isFinite(Number(product.stock)) ? `လက်ကျန်: ${Math.max(0, Number(product.stock) - (cart[product.id] || 0))}` : "");
   detailAddButton.disabled = stockOut;
-  detailAddButton.innerHTML = stockOut ? "Stock out!" : "အိတ်ထဲထည့်ရန် <span>+</span>";
+  detailAddButton.innerHTML = stockOut ? "လက်ကျန်မရှိပါ" : "အိတ်ထဲထည့်ရန် <span>+</span>";
   detailProductDescription.textContent = product.meta || "";
   detailChoices.innerHTML = (product.choices || []).map((choice, index) => `<label><input type="radio" name="detail-choice" value="${choice}" ${index === 0 ? "checked" : ""} /> <span>${choice}</span></label>`).join("");
   const galleryItems = [];
@@ -465,11 +465,11 @@ function setProductMedia(files) {
   const photoCount = allFiles.filter((file) => file.type.startsWith("image/")).length;
   const videoCount = allFiles.filter((file) => file.type.startsWith("video/")).length;
   if (allFiles.some((file) => !file.type.startsWith("image/") && !file.type.startsWith("video/"))) {
-    uploadFeedback.textContent = "Only photos and videos can be uploaded.";
+    uploadFeedback.textContent = "ဓာတ်ပုံနှင့် ဗီဒီယိုများသာ တင်နိုင်ပါသည်။";
     return;
   }
   if (photoCount > 10 || videoCount > 5) {
-    uploadFeedback.textContent = "Maximum 10 photos and 5 videos allowed.";
+    uploadFeedback.textContent = "ဓာတ်ပုံ ၁၀ ပုံနှင့် ဗီဒီယို ၅ ခုအထိသာ တင်နိုင်ပါသည်။";
     return;
   }
   selectedProductMedia = allFiles;
@@ -485,7 +485,7 @@ adminDialog.addEventListener("submit", (event) => {
   event.preventDefault();
   const username = adminUsername.value.trim().toLowerCase();
   if (username !== "lavaflows11" && username !== "@lavaflows11") {
-    adminFeedback.textContent = "You're not admin";
+    adminFeedback.textContent = "သင်သည် စီမံခန့်ခွဲသူ မဟုတ်ပါ။";
     return;
   }
   adminUnlocked = true;
@@ -513,7 +513,7 @@ addChoiceButton.addEventListener("click", addChoiceRow);
 productUploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!adminUnlocked) { openAdminDialog(); return; }
-  if (!selectedThumbnail && selectedProductMedia.length === 0) { uploadFeedback.textContent = "Add a thumbnail or at least one detail photo/video."; return; }
+  if (!selectedThumbnail && selectedProductMedia.length === 0) { uploadFeedback.textContent = "အဓိကပုံ သို့မဟုတ် အသေးစိတ်ဓာတ်ပုံ/ဗီဒီယို အနည်းဆုံးတစ်ခု ထည့်ပါ။"; return; }
   const productId = firebase.firestore().collection("products").doc().id;
   const product = {
     id: productId,
@@ -525,16 +525,16 @@ productUploadForm.addEventListener("submit", async (event) => {
     choices: Array.from(choiceList.querySelectorAll(".choice-input")).map((input) => input.value.trim()).filter(Boolean)
   };
   uploadProductButton.disabled = true;
-  uploadProductButton.textContent = "Uploading...";
-  uploadFeedback.textContent = "Saving product to Firebase...";
+  uploadProductButton.textContent = "တင်နေသည်...";
+  uploadFeedback.textContent = "ပစ္စည်းကို Firebase သို့ သိမ်းနေသည်...";
   try {
     await window.firebaseReady;
     const cardMedia = selectedThumbnail || selectedProductMedia[0];
     const cardIsVideo = cardMedia.type.startsWith("video/");
     if (cardIsVideo) {
-      uploadFeedback.textContent = "Videos can only be used as detail photos for now — pick an image as the thumbnail so it can be saved permanently.";
+      uploadFeedback.textContent = "လောလောဆယ် ဗီဒီယိုများကို အသေးစိတ်ပုံအဖြစ်သာ အသုံးပြုနိုင်ပါသည် — အမြဲတမ်းသိမ်းရန် အဓိကပုံအဖြစ် ဓာတ်ပုံတစ်ပုံ ရွေးပါ။";
       uploadProductButton.disabled = false;
-      uploadProductButton.textContent = "Upload product";
+      uploadProductButton.textContent = "ပစ္စည်းတင်ရန်";
       return;
     }
 
@@ -546,7 +546,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     if (totalBytes > 900000) {
       // Too many/too large photos for one Firestore doc — keep the thumbnail only.
       dataUrls.length = 1;
-      uploadFeedback.textContent = "Photos were large, so only the thumbnail was kept to fit Firebase's size limit.";
+      uploadFeedback.textContent = "ဓာတ်ပုံများ အရွယ်အစားကြီးသောကြောင့် Firebase အရွယ်အစားကန့်သတ်ချက်နှင့် ကိုက်ညီရန် အဓိကပုံတစ်ပုံသာ သိမ်းထားပါသည်။";
     }
     const detailMediaUrls = dataUrls.map((url, i) => ({ url, type: "image/jpeg", name: imageFiles[i] ? imageFiles[i].name : `photo-${i}` }));
     const savedProduct = {
@@ -562,7 +562,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     products.unshift(newProduct);
     scheduleStockOutCleanup(newProduct);
     renderProducts();
-    uploadFeedback.textContent = "Product uploaded successfully.";
+    uploadFeedback.textContent = "ပစ္စည်းတင်ပြီးပါပြီ။";
     productUploadForm.reset();
     selectedProductMedia = [];
     clearThumbnail();
@@ -571,11 +571,11 @@ productUploadForm.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Product upload failed:", error);
     uploadFeedback.textContent = error.code === "permission-denied"
-      ? "Firebase denied this upload. Allow authenticated users to write products in Firestore rules."
-      : "Upload failed. Check Firebase configuration and try again.";
+      ? "Firebase က ပစ္စည်းတင်ခွင့်ကို ပယ်ချလိုက်ပါသည်။ Firestore စည်းမျဉ်းများတွင် အတည်ပြုထားသောအသုံးပြုသူများကို ပစ္စည်းရေးသားခွင့်ပြုပါ။"
+      : "တင်၍မရပါ။ Firebase ပြင်ဆင်မှုကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
   } finally {
     uploadProductButton.disabled = false;
-    uploadProductButton.textContent = "Upload product";
+    uploadProductButton.textContent = "ပစ္စည်းတင်ရန်";
   }
 });
 $("#closeProductDetail").addEventListener("click", closeProductDetail);
@@ -588,12 +588,7 @@ detailAddButton.addEventListener("click", () => {
 document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !productDetailBackdrop.hidden) closeProductDetail(); });
 async function loadSavedProducts() {
   try {
-    await window.firebaseReady;
-    const snapshot = await firebase.firestore().collection("products").get();
-    const savedProducts = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return { ...data, id: doc.id, image: typeof data.image === "string" ? data.image : "" };
-    });
+    const savedProducts = await window.firebaseImageLoader.loadProducts("products");
     products = [...savedProducts, ...products.filter((product) => !savedProducts.some((savedProduct) => savedProduct.id === product.id))];
     savedProducts.forEach(scheduleStockOutCleanup);
     renderProducts();
