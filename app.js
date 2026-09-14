@@ -1,12 +1,5 @@
-const products = [
-  { id: 1, name: "ပုံသွင်း ဘလေဇာ", category: "Trendy", meta: "Atelier N° 8 · အနက်", price: 312000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=900&q=85", badge: "အသစ်" },
-  { id: 2, name: "လီနင်ရှည်ဝတ်စုံ", category: "Women", meta: "Lune Studio · အဖြူဖျော့", price: 201600, image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=900&q=85" },
-  { id: 3, name: "အေးမြသော ရှပ်အင်္ကျီ", category: "Men", meta: "Common Ground · အစိမ်းဖျော့", price: 151200, image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=85", badge: "အသစ်" },
-  { id: 4, name: "သားရေပခုံးအိတ်", category: "Accessories", meta: "Forma · ကော်ဖီရောင်", price: 260400, image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85" },
-  { id: 5, name: "နေ့စဉ်ဝတ် ဘောင်းဘီရှည်", category: "Women", meta: "Still Life · ဒင်နင်", price: 184800, image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=85" },
-  { id: 6, name: "ခေတ်ဟောင်း စနီကာ", category: "Shoes", meta: "Reebok · အဖြူဖျော့", price: 231000, image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85" },
-  { id: 7, name: "မီရီနိုချည် ပိုလို", category: "Men", meta: "Norse Project · ကုလားအုတ်ရောင်", price: 220500, image: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=900&q=85" },
-  { id: 8, name: "ကိုယ်ထည်ပါ နေကာမျက်မှန်", category: "Accessories", meta: "Onda · အညိုရောင်", price: 113400, image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=85" }
+let products = [
+
 ];
 const categories = ["All", "Trendy", "Women", "Men", "Accessories", "Shoes"];
 const categoryLabels = { All: "အားလုံး", Trendy: "ခေတ်စား", Women: "အမျိုးသမီး", Men: "အမျိုးသား", Accessories: "အသုံးအဆောင်", Shoes: "ဖိနပ်" };
@@ -16,16 +9,21 @@ const categoryTabs = $("#categoryTabs"), catalog = $("#catalog"), emptyState = $
 const searchInput = $("#searchInput"), sortSelect = $("#sortSelect"), cartDrawer = $("#cartDrawer"), drawerOverlay = $("#drawerOverlay"), drawerItems = $("#drawerItems");
 const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
 function renderCategories() { categoryTabs.innerHTML = categories.map((category) => `<button class="category-tab ${category === activeCategory ? "active" : ""}" data-category="${category}" role="tab" aria-selected="${category === activeCategory}">${categoryLabels[category]}</button>`).join(""); }
-function visibleProducts() { return products.filter((product) => (activeCategory === "All" || product.category === activeCategory) && `${product.name} ${product.category} ${product.meta}`.toLowerCase().includes(searchTerm.toLowerCase())).sort((first, second) => sortSelect.value === "price-low" ? first.price - second.price : sortSelect.value === "price-high" ? second.price - first.price : first.id - second.id); }
+function visibleProducts() { return products.filter((product) => (activeCategory === "All" || product.category === activeCategory) && `${product.name} ${product.category} ${product.meta}`.toLowerCase().includes(searchTerm.toLowerCase())).sort((first, second) => sortSelect.value === "price-low" ? first.price - second.price : sortSelect.value === "price-high" ? second.price - first.price : 0); }
 function renderProducts() {
   const items = visibleProducts(); catalog.innerHTML = ""; emptyState.hidden = items.length > 0;
   items.forEach((product) => { const card = template.content.cloneNode(true), quantity = cart[product.id] || 0;
-    const image = card.querySelector(".product-image"); image.src = product.image; image.alt = product.name;
+    const image = card.querySelector(".product-image"); const video = card.querySelector(".product-video");
+    if (product.mediaType === "video" && product.image) { image.hidden = true; video.hidden = false; video.src = product.image; } else if (product.image) { image.src = product.image; image.alt = product.name; } else { image.hidden = true; video.hidden = true; }
     card.querySelector(".product-name").textContent = product.name; card.querySelector(".product-meta").textContent = product.meta; card.querySelector(".product-price").textContent = money(product.price);
     const badge = card.querySelector(".product-badge"); if (product.badge) { badge.hidden = false; badge.textContent = product.badge; }
     const count = card.querySelector(".product-count"); count.hidden = quantity === 0; count.textContent = String(quantity);
     const addButton = card.querySelector(".add-button"), controls = card.querySelector(".quantity-controls"), quantityValue = card.querySelector(".quantity-value");
     if (quantity > 0) { addButton.hidden = true; controls.hidden = false; quantityValue.textContent = String(quantity); }
+    card.querySelector(".product-card").addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      openProductDetail(product);
+    });
     addButton.addEventListener("click", () => updateQuantity(product.id, 1)); card.querySelector(".decrease").addEventListener("click", () => updateQuantity(product.id, -1)); card.querySelector(".increase").addEventListener("click", () => updateQuantity(product.id, 1)); catalog.appendChild(card);
   });
 }
@@ -216,4 +214,227 @@ categoryTabs.addEventListener("click", (event) => { const button = event.target.
 searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); }); sortSelect.addEventListener("change", renderProducts);
 $("#bagButton").addEventListener("click", () => setDrawer(true)); $("#viewBag").addEventListener("click", () => setDrawer(true)); $("#closeBag").addEventListener("click", () => setDrawer(false)); drawerOverlay.addEventListener("click", () => setDrawer(false));
 $("#searchToggle").addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
+
+const controlPanelTab = $("#controlPanelTab");
+const controlPanel = $("#controlPanel");
+const adminDialogBackdrop = $("#adminDialogBackdrop");
+const adminDialog = $("#adminDialog");
+const adminUsername = $("#adminUsername");
+const adminFeedback = $("#adminFeedback");
+const productMediaDropzone = $("#productMediaDropzone");
+const productMediaInput = $("#productMedia");
+const selectedMedia = $("#selectedMedia");
+const uploadFeedback = $("#uploadFeedback");
+const productUploadForm = $("#productUploadForm");
+const uploadProductButton = productUploadForm.querySelector(".upload-product-button");
+const productDetailBackdrop = $("#productDetailBackdrop");
+const detailGallery = $("#detailGallery");
+const detailProductCategory = $("#detailProductCategory");
+const detailProductName = $("#detailProductName");
+const detailProductPrice = $("#detailProductPrice");
+const detailProductDescription = $("#detailProductDescription");
+const detailChoices = $("#detailChoices");
+const detailAddButton = $("#detailAddButton");
+const thumbnailDropzone = $("#thumbnailDropzone");
+const thumbnailInput = $("#thumbnailInput");
+const thumbnailEmpty = $("#thumbnailEmpty");
+const thumbnailPreview = $("#thumbnailPreview");
+const thumbnailImage = $("#thumbnailImage");
+const thumbnailVideo = $("#thumbnailVideo");
+const thumbnailFileName = $("#thumbnailFileName");
+const choiceList = $("#choiceList");
+const addChoiceButton = $("#addChoiceButton");
+let adminUnlocked = false;
+let selectedProductMedia = [];
+let selectedThumbnail = null;
+let activeDetailProduct = null;
+
+function openAdminDialog() {
+  adminDialogBackdrop.hidden = false;
+  adminFeedback.textContent = "";
+  adminUsername.value = "";
+  adminUsername.focus();
+}
+
+function closeAdminDialog() { adminDialogBackdrop.hidden = true; }
+
+function showControlPanel() {
+  controlPanel.hidden = false;
+  controlPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderSelectedMedia() {
+  selectedMedia.innerHTML = selectedProductMedia.map((file) => `<span>${file.type.startsWith("video/") ? "Video" : "Photo"}: ${file.name}</span>`).join("");
+}
+
+function setThumbnail(file) {
+  if (!file || (!file.type.startsWith("image/") && !file.type.startsWith("video/"))) {
+    uploadFeedback.textContent = "Thumbnail must be a photo or video.";
+    return;
+  }
+  selectedThumbnail = file;
+  thumbnailEmpty.hidden = true;
+  thumbnailPreview.hidden = false;
+  thumbnailImage.hidden = !file.type.startsWith("image/");
+  thumbnailVideo.hidden = !file.type.startsWith("video/");
+  const previewUrl = URL.createObjectURL(file);
+  if (file.type.startsWith("image/")) thumbnailImage.src = previewUrl;
+  else thumbnailVideo.src = previewUrl;
+  thumbnailFileName.textContent = file.name;
+}
+
+function clearThumbnail() {
+  selectedThumbnail = null;
+  thumbnailInput.value = "";
+  thumbnailEmpty.hidden = false;
+  thumbnailPreview.hidden = true;
+  thumbnailImage.removeAttribute("src");
+  thumbnailVideo.removeAttribute("src");
+}
+
+function addChoiceRow() {
+  const row = document.createElement("div");
+  row.className = "choice-row";
+  row.innerHTML = `<input class="choice-input" type="text" placeholder="Item-Name or colour" aria-label="Item name or colour choice" required /><button class="remove-choice-button" type="button" aria-label="Remove choice">×</button>`;
+  row.querySelector(".remove-choice-button").addEventListener("click", () => row.remove());
+  choiceList.appendChild(row);
+}
+
+function openProductDetail(product) {
+  activeDetailProduct = product;
+  detailProductCategory.textContent = categoryLabels[product.category] || product.category || "Product";
+  detailProductName.textContent = product.name;
+  detailProductPrice.textContent = money(product.price);
+  detailProductDescription.textContent = product.meta || "";
+  detailChoices.innerHTML = (product.choices || []).map((choice, index) => `<label><input type="radio" name="detail-choice" value="${choice}" ${index === 0 ? "checked" : ""} /> <span>${choice}</span></label>`).join("");
+  const galleryItems = [];
+  if (product.detailMediaUrls && product.detailMediaUrls.length) galleryItems.push(...product.detailMediaUrls);
+  else if (product.image) galleryItems.push({ url: product.image, type: product.mediaType || "image/jpeg", name: product.name });
+  detailGallery.innerHTML = galleryItems.map((item) => item.type.startsWith("video/")
+    ? `<video src="${item.url}" controls muted playsinline></video>`
+    : `<img src="${item.url}" alt="${product.name}" />`).join("");
+  productDetailBackdrop.hidden = false;
+}
+
+function closeProductDetail() { productDetailBackdrop.hidden = true; activeDetailProduct = null; }
+
+function setProductMedia(files) {
+  const nextFiles = Array.from(files);
+  const allFiles = [...selectedProductMedia, ...nextFiles];
+  const photoCount = allFiles.filter((file) => file.type.startsWith("image/")).length;
+  const videoCount = allFiles.filter((file) => file.type.startsWith("video/")).length;
+  if (allFiles.some((file) => !file.type.startsWith("image/") && !file.type.startsWith("video/"))) {
+    uploadFeedback.textContent = "Only photos and videos can be uploaded.";
+    return;
+  }
+  if (photoCount > 10 || videoCount > 5) {
+    uploadFeedback.textContent = "Maximum 10 photos and 5 videos allowed.";
+    return;
+  }
+  selectedProductMedia = allFiles;
+  uploadFeedback.textContent = "";
+  renderSelectedMedia();
+}
+
+controlPanelTab.addEventListener("click", () => { if (adminUnlocked) showControlPanel(); else openAdminDialog(); });
+$("#closeControlPanel").addEventListener("click", () => { controlPanel.hidden = true; });
+$("#cancelAdminDialog").addEventListener("click", closeAdminDialog);
+adminDialogBackdrop.addEventListener("click", (event) => { if (event.target === adminDialogBackdrop) closeAdminDialog(); });
+adminDialog.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const username = adminUsername.value.trim().toLowerCase();
+  if (username !== "lavaflows11" && username !== "@lavaflows11") {
+    adminFeedback.textContent = "You're not admin";
+    return;
+  }
+  adminUnlocked = true;
+  closeAdminDialog();
+  showControlPanel();
+});
+productMediaInput.addEventListener("change", () => { if (productMediaInput.files) setProductMedia(productMediaInput.files); });
+productMediaDropzone.addEventListener("dragover", (event) => { event.preventDefault(); productMediaDropzone.classList.add("dragover"); });
+productMediaDropzone.addEventListener("dragleave", () => productMediaDropzone.classList.remove("dragover"));
+productMediaDropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  productMediaDropzone.classList.remove("dragover");
+  if (event.dataTransfer && event.dataTransfer.files) setProductMedia(event.dataTransfer.files);
+});
+thumbnailInput.addEventListener("change", () => { if (thumbnailInput.files && thumbnailInput.files[0]) setThumbnail(thumbnailInput.files[0]); });
+thumbnailDropzone.addEventListener("dragover", (event) => { event.preventDefault(); thumbnailDropzone.classList.add("dragover"); });
+thumbnailDropzone.addEventListener("dragleave", () => thumbnailDropzone.classList.remove("dragover"));
+thumbnailDropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  thumbnailDropzone.classList.remove("dragover");
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  if (file) setThumbnail(file);
+});
+addChoiceButton.addEventListener("click", addChoiceRow);
+productUploadForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!adminUnlocked) { openAdminDialog(); return; }
+  if (!selectedThumbnail && selectedProductMedia.length === 0) { uploadFeedback.textContent = "Add a thumbnail or at least one detail photo/video."; return; }
+  const productId = firebase.firestore().collection("products").doc().id;
+  const product = {
+    id: productId,
+    name: $("#itemName").value.trim(),
+    category: $("#itemCategory").value,
+    meta: $("#itemDescription").value.trim(),
+    price: Number($("#itemPrice").value),
+    stock: Number($("#itemStocks").value),
+    choices: Array.from(choiceList.querySelectorAll(".choice-input")).map((input) => input.value.trim()).filter(Boolean)
+  };
+  uploadProductButton.disabled = true;
+  uploadProductButton.textContent = "Uploading...";
+  uploadFeedback.textContent = "Saving product to Firebase...";
+  try {
+    await window.firebaseReady;
+    const media = selectedProductMedia.map((file) => ({ name: file.name, type: file.type }));
+    const thumbnail = selectedThumbnail ? { name: selectedThumbnail.name, type: selectedThumbnail.type } : null;
+    const savedProduct = { ...product, media, thumbnail, badge: "အသစ်", createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+    await firebase.firestore().collection("products").doc(productId).set(savedProduct);
+    const cardMedia = selectedThumbnail || selectedProductMedia[0];
+    const detailMediaUrls = selectedProductMedia.map((file) => ({ url: URL.createObjectURL(file), type: file.type, name: file.name }));
+    if (selectedThumbnail) detailMediaUrls.unshift({ url: URL.createObjectURL(selectedThumbnail), type: selectedThumbnail.type, name: selectedThumbnail.name });
+    products.unshift({ ...savedProduct, image: URL.createObjectURL(cardMedia), mediaType: cardMedia.type.startsWith("video/") ? "video" : "image", detailMediaUrls });
+    renderProducts();
+    uploadFeedback.textContent = "Product uploaded successfully.";
+    productUploadForm.reset();
+    selectedProductMedia = [];
+    clearThumbnail();
+    choiceList.innerHTML = "";
+    renderSelectedMedia();
+  } catch (error) {
+    console.error("Product upload failed:", error);
+    uploadFeedback.textContent = error.code === "permission-denied"
+      ? "Firebase denied this upload. Allow authenticated users to write products in Firestore rules."
+      : "Upload failed. Check Firebase configuration and try again.";
+  } finally {
+    uploadProductButton.disabled = false;
+    uploadProductButton.textContent = "Upload product";
+  }
+});
+$("#closeProductDetail").addEventListener("click", closeProductDetail);
+productDetailBackdrop.addEventListener("click", (event) => { if (event.target === productDetailBackdrop) closeProductDetail(); });
+detailAddButton.addEventListener("click", () => {
+  if (!activeDetailProduct) return;
+  updateQuantity(activeDetailProduct.id, 1);
+  closeProductDetail();
+});
+document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !productDetailBackdrop.hidden) closeProductDetail(); });
+async function loadSavedProducts() {
+  try {
+    await window.firebaseReady;
+    const snapshot = await firebase.firestore().collection("products").get();
+    const savedProducts = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const image = typeof data.image === "string" && !data.image.includes("firebasestorage.googleapis.com") ? data.image : "";
+      return { ...data, id: doc.id, image };
+    });
+    products = [...savedProducts, ...products.filter((product) => !savedProducts.some((savedProduct) => savedProduct.id === product.id))];
+    renderProducts();
+  } catch (error) {
+    console.error("Could not load saved products:", error);
+  }
+}
 renderCategories(); renderProducts(); renderCart(); setPaymentMethod("kbzpay");
+loadSavedProducts();
