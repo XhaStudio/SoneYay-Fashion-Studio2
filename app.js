@@ -64,7 +64,7 @@ if (tg) { tg.ready(); tg.expand(); }
 
 // Bot server's public HTTPS URL, now hosted on Render.
 // Browsers block http:// calls from this https:// page, so this must stay https://.
-const API_BASE_URL = "https://soneyay-fashion-studio3.onrender.com";
+const API_BASE_URL = "https://soneyay-fa-6da.b.onjrnm.vip";
 
 function notify(msg) {
   console.log("[notify]", msg);
