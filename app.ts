@@ -1,39 +1,96 @@
 export {};
 
-type Category = "All" | "Trendy" | "Women" | "Men" | "Accessories" | "Shoes";
-type Product = { id: number; name: string; category: Exclude<Category, "All">; meta: string; price: number; image: string; badge?: string };
+type Category =
+  | "ခေတ်စား"
+  | "အထူးစျေးနှုန်း"
+  | "အင်္ကျီ"
+  | "ဘောင်းဘီ"
+  | "စကတ်"
+  | "ဂါဝန်"
+  | "1 SET"
+  | "ဂျင်းထည်"
+  | "တီရှပ်"
+  | "ရှပ်အင်္ကျီ"
+  | "စပန့်"
+  | "အမျိုးသမီးအင်္ကျီ"
+  | "အပေါ်ထပ်"
+  | "အတွင်းဝတ်"
+  | "အသုံးအဆောင်"
+  | "အမျိုးသားဝတ်"
+  | "ကချင်ထည်"
+  | "ပါတိတ်"
+  | "ဇင်းမယ်"
+  | "ချိတ်"
+  | "တမူး";
+type Product = {
+  id: number;
+  name: string;
+  category: Category;
+  meta: string;
+  price: number;
+  image: string;
+  badge?: string;
+};
 type Cart = Record<number, number>;
 
-const products: Product[] = [
+const products: Product[] = [];
 
+const categories: Category[] = [
+  "ခေတ်စား",
+  "အထူးစျေးနှုန်း",
+  "အင်္ကျီ",
+  "ဘောင်းဘီ",
+  "စကတ်",
+  "ဂါဝန်",
+  "1 SET",
+  "ဂျင်းထည်",
+  "တီရှပ်",
+  "ရှပ်အင်္ကျီ",
+  "စပန့်",
+  "အမျိုးသမီးအင်္ကျီ",
+  "အပေါ်ထပ်",
+  "အတွင်းဝတ်",
+  "အသုံးအဆောင်",
+  "အမျိုးသားဝတ်",
+  "ကချင်ထည်",
+  "ပါတိတ်",
+  "ဇင်းမယ်",
+  "ချိတ်",
+  "တမူး",
 ];
-
-const categories: Category[] = ["All", "Trendy", "Women", "Men", "Accessories", "Shoes"];
-const categoryLabels: Record<Category, string> = { All: "အားလုံး", Trendy: "ခေတ်စား", Women: "အမျိုးသမီး", Men: "အမျိုးသား", Accessories: "အသုံးအဆောင်", Shoes: "ဖိနပ်" };
-let activeCategory: Category = "All";
+let activeCategory: Category | null = null;
 let searchTerm = "";
 let cart: Cart = {};
 
 const categoryTabs = document.querySelector<HTMLDivElement>("#categoryTabs")!;
 const catalog = document.querySelector<HTMLElement>("#catalog")!;
 const emptyState = document.querySelector<HTMLParagraphElement>("#emptyState")!;
-const template = document.querySelector<HTMLTemplateElement>("#productTemplate")!;
+const template =
+  document.querySelector<HTMLTemplateElement>("#productTemplate")!;
 const searchInput = document.querySelector<HTMLInputElement>("#searchInput")!;
 const sortSelect = document.querySelector<HTMLSelectElement>("#sortSelect")!;
 const cartDrawer = document.querySelector<HTMLElement>("#cartDrawer")!;
 const drawerOverlay = document.querySelector<HTMLDivElement>("#drawerOverlay")!;
 const drawerItems = document.querySelector<HTMLDivElement>("#drawerItems")!;
 
-const money = (value: number): string => `${value.toLocaleString("en-US")} ကျပ်`;
+const money = (value: number): string =>
+  `${value.toLocaleString("en-US")} ကျပ်`;
 
 function renderCategories(): void {
-  categoryTabs.innerHTML = categories.map((category) => `<button class="category-tab ${category === activeCategory ? "active" : ""}" data-category="${category}" role="tab" aria-selected="${category === activeCategory}">${categoryLabels[category]}</button>`).join("");
+  categoryTabs.innerHTML = categories
+    .map(
+      (category) =>
+        `<button class="category-tab ${category === activeCategory ? "active" : ""}" data-category="${category}" role="tab" aria-selected="${category === activeCategory}">${category}</button>`,
+    )
+    .join("");
 }
 
 function visibleProducts(): Product[] {
   const filtered = products.filter((product) => {
-    const matchesCategory = activeCategory === "All" || product.category === activeCategory;
-    const searchable = `${product.name} ${product.category} ${product.meta}`.toLowerCase();
+    const matchesCategory =
+      activeCategory === null || product.category === activeCategory;
+    const searchable =
+      `${product.name} ${product.category} ${product.meta}`.toLowerCase();
     return matchesCategory && searchable.includes(searchTerm.toLowerCase());
   });
   return filtered.sort((first, second) => {
@@ -53,48 +110,90 @@ function renderProducts(): void {
     const image = card.querySelector<HTMLImageElement>(".product-image")!;
     image.src = product.image;
     image.alt = product.name;
-    card.querySelector<HTMLElement>(".product-name")!.textContent = product.name;
-    card.querySelector<HTMLElement>(".product-meta")!.textContent = product.meta;
-    card.querySelector<HTMLElement>(".product-price")!.textContent = money(product.price);
+    card.querySelector<HTMLElement>(".product-name")!.textContent =
+      product.name;
+    card.querySelector<HTMLElement>(".product-meta")!.textContent =
+      product.meta;
+    card.querySelector<HTMLElement>(".product-price")!.textContent = money(
+      product.price,
+    );
     const badge = card.querySelector<HTMLElement>(".product-badge")!;
-    if (product.badge) { badge.hidden = false; badge.textContent = product.badge; }
+    if (product.badge) {
+      badge.hidden = false;
+      badge.textContent = product.badge;
+    }
     const count = card.querySelector<HTMLElement>(".product-count")!;
     count.hidden = quantity === 0;
     count.textContent = String(quantity);
     const addButton = card.querySelector<HTMLButtonElement>(".add-button")!;
     const controls = card.querySelector<HTMLDivElement>(".quantity-controls")!;
     const quantityValue = card.querySelector<HTMLElement>(".quantity-value")!;
-    if (quantity > 0) { addButton.hidden = true; controls.hidden = false; quantityValue.textContent = String(quantity); }
+    if (quantity > 0) {
+      addButton.hidden = true;
+      controls.hidden = false;
+      quantityValue.textContent = String(quantity);
+    }
     addButton.addEventListener("click", () => updateQuantity(product.id, 1));
-    card.querySelector(".decrease")!.addEventListener("click", () => updateQuantity(product.id, -1));
-    card.querySelector(".increase")!.addEventListener("click", () => updateQuantity(product.id, 1));
+    card
+      .querySelector(".decrease")!
+      .addEventListener("click", () => updateQuantity(product.id, -1));
+    card
+      .querySelector(".increase")!
+      .addEventListener("click", () => updateQuantity(product.id, 1));
     catalog.appendChild(card);
   });
 }
 
 function updateQuantity(id: number, change: number): void {
   const nextQuantity = Math.max(0, (cart[id] || 0) + change);
-  if (nextQuantity === 0) delete cart[id]; else cart[id] = nextQuantity;
+  if (nextQuantity === 0) delete cart[id];
+  else cart[id] = nextQuantity;
   renderProducts();
   renderCart();
 }
 
 function cartDetails(): { product: Product; quantity: number }[] {
-  return products.filter((product) => cart[product.id]).map((product) => ({ product, quantity: cart[product.id] }));
+  return products
+    .filter((product) => cart[product.id])
+    .map((product) => ({ product, quantity: cart[product.id] }));
 }
 
 function renderCart(): void {
   const details = cartDetails();
   const itemCount = details.reduce((sum, item) => sum + item.quantity, 0);
-  const total = details.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const total = details.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0,
+  );
   document.querySelector("#bagCount")!.textContent = String(itemCount);
-  document.querySelector("#cartItemCount")!.textContent = `${itemCount} ပစ္စည်း`;
+  document.querySelector("#cartItemCount")!.textContent =
+    `${itemCount} ပစ္စည်း`;
   document.querySelector("#cartTotal")!.textContent = money(total);
   document.querySelector("#drawerTotal")!.textContent = money(total);
-  document.querySelector<HTMLElement>("#cartBar")!.classList.toggle("visible", itemCount > 0);
-  document.querySelector<HTMLElement>("#cartBar")!.setAttribute("aria-hidden", String(itemCount === 0));
-  drawerItems.innerHTML = details.length ? details.map(({ product, quantity }) => `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${money(product.price)}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`).join("") : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
-  drawerItems.querySelectorAll<HTMLButtonElement>("button[data-id]").forEach((button) => button.addEventListener("click", () => updateQuantity(Number(button.dataset.id), Number(button.dataset.change))));
+  document
+    .querySelector<HTMLElement>("#cartBar")!
+    .classList.toggle("visible", itemCount > 0);
+  document
+    .querySelector<HTMLElement>("#cartBar")!
+    .setAttribute("aria-hidden", String(itemCount === 0));
+  drawerItems.innerHTML = details.length
+    ? details
+        .map(
+          ({ product, quantity }) =>
+            `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${money(product.price)}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`,
+        )
+        .join("")
+    : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
+  drawerItems
+    .querySelectorAll<HTMLButtonElement>("button[data-id]")
+    .forEach((button) =>
+      button.addEventListener("click", () =>
+        updateQuantity(
+          Number(button.dataset.id),
+          Number(button.dataset.change),
+        ),
+      ),
+    );
 }
 
 function setDrawer(open: boolean): void {
@@ -105,32 +204,57 @@ function setDrawer(open: boolean): void {
 }
 
 type PaymentMethodId = "kbzpay" | "wavemoney";
-const paymentAccounts: Record<PaymentMethodId, { label: string; number: string }> = {
+const paymentAccounts: Record<
+  PaymentMethodId,
+  { label: string; number: string }
+> = {
   kbzpay: { label: "KBZPay", number: "09-750 123 456" },
-  wavemoney: { label: "WaveMoney", number: "09-961 234 567" }
+  wavemoney: { label: "WaveMoney", number: "09-961 234 567" },
 };
 let selectedPaymentMethod: PaymentMethodId = "kbzpay";
 let selectedScreenshot: File | null = null;
 
 const checkoutStep = document.querySelector<HTMLDivElement>("#checkoutStep")!;
 const paymentStep = document.querySelector<HTMLDivElement>("#paymentStep")!;
-const checkoutButton = document.querySelector<HTMLButtonElement>("#checkoutButton")!;
-const backToCartButton = document.querySelector<HTMLButtonElement>("#backToCartButton")!;
-const paymentMethodButtons = document.querySelectorAll<HTMLButtonElement>(".payment-method");
-const paymentAccountName = document.querySelector<HTMLElement>("#paymentAccountName")!;
-const paymentAccountNumber = document.querySelector<HTMLElement>("#paymentAccountNumber")!;
-const copyAccountButton = document.querySelector<HTMLButtonElement>("#copyAccountButton")!;
+const checkoutButton =
+  document.querySelector<HTMLButtonElement>("#checkoutButton")!;
+const backToCartButton =
+  document.querySelector<HTMLButtonElement>("#backToCartButton")!;
+const paymentMethodButtons =
+  document.querySelectorAll<HTMLButtonElement>(".payment-method");
+const paymentAccountName = document.querySelector<HTMLElement>(
+  "#paymentAccountName",
+)!;
+const paymentAccountNumber = document.querySelector<HTMLElement>(
+  "#paymentAccountNumber",
+)!;
+const copyAccountButton =
+  document.querySelector<HTMLButtonElement>("#copyAccountButton")!;
 const dropzone = document.querySelector<HTMLLabelElement>("#dropzone")!;
 const dropzoneEmpty = document.querySelector<HTMLDivElement>("#dropzoneEmpty")!;
-const dropzoneFilled = document.querySelector<HTMLDivElement>("#dropzoneFilled")!;
-const dropzonePreview = document.querySelector<HTMLImageElement>("#dropzonePreview")!;
-const dropzoneFileName = document.querySelector<HTMLElement>("#dropzoneFileName")!;
-const paymentScreenshotInput = document.querySelector<HTMLInputElement>("#paymentScreenshot")!;
-const removeScreenshotButton = document.querySelector<HTMLButtonElement>("#removeScreenshotButton")!;
-const submitPaymentButton = document.querySelector<HTMLButtonElement>("#submitPaymentButton")!;
+const dropzoneFilled =
+  document.querySelector<HTMLDivElement>("#dropzoneFilled")!;
+const dropzonePreview =
+  document.querySelector<HTMLImageElement>("#dropzonePreview")!;
+const dropzoneFileName =
+  document.querySelector<HTMLElement>("#dropzoneFileName")!;
+const paymentScreenshotInput =
+  document.querySelector<HTMLInputElement>("#paymentScreenshot")!;
+const removeScreenshotButton = document.querySelector<HTMLButtonElement>(
+  "#removeScreenshotButton",
+)!;
+const submitPaymentButton = document.querySelector<HTMLButtonElement>(
+  "#submitPaymentButton",
+)!;
 
-function showCheckoutStep(): void { checkoutStep.hidden = false; paymentStep.hidden = true; }
-function showPaymentStep(): void { checkoutStep.hidden = true; paymentStep.hidden = false; }
+function showCheckoutStep(): void {
+  checkoutStep.hidden = false;
+  paymentStep.hidden = true;
+}
+function showPaymentStep(): void {
+  checkoutStep.hidden = true;
+  paymentStep.hidden = false;
+}
 
 function setPaymentMethod(method: PaymentMethodId): void {
   selectedPaymentMethod = method;
@@ -148,7 +272,9 @@ function setScreenshot(file: File): void {
   if (!file.type.startsWith("image/")) return;
   selectedScreenshot = file;
   const reader = new FileReader();
-  reader.onload = () => { dropzonePreview.src = String(reader.result); };
+  reader.onload = () => {
+    dropzonePreview.src = String(reader.result);
+  };
   reader.readAsDataURL(file);
   dropzoneFileName.textContent = file.name;
   dropzoneEmpty.hidden = true;
@@ -166,19 +292,39 @@ function clearScreenshot(): void {
 
 checkoutButton.addEventListener("click", showPaymentStep);
 backToCartButton.addEventListener("click", showCheckoutStep);
-paymentMethodButtons.forEach((button) => button.addEventListener("click", () => setPaymentMethod(button.dataset.method as PaymentMethodId)));
+paymentMethodButtons.forEach((button) =>
+  button.addEventListener("click", () =>
+    setPaymentMethod(button.dataset.method as PaymentMethodId),
+  ),
+);
 copyAccountButton.addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText(paymentAccountNumber.textContent || ""); } catch { /* clipboard unavailable */ }
+  try {
+    await navigator.clipboard.writeText(paymentAccountNumber.textContent || "");
+  } catch {
+    /* clipboard unavailable */
+  }
   copyAccountButton.classList.add("copied");
   copyAccountButton.textContent = "ကူးယူပြီးပါပြီ";
-  setTimeout(() => { copyAccountButton.classList.remove("copied"); copyAccountButton.textContent = "ကူးယူရန်"; }, 1600);
+  setTimeout(() => {
+    copyAccountButton.classList.remove("copied");
+    copyAccountButton.textContent = "ကူးယူရန်";
+  }, 1600);
 });
 paymentScreenshotInput.addEventListener("change", () => {
-  if (paymentScreenshotInput.files && paymentScreenshotInput.files[0]) setScreenshot(paymentScreenshotInput.files[0]);
+  if (paymentScreenshotInput.files && paymentScreenshotInput.files[0])
+    setScreenshot(paymentScreenshotInput.files[0]);
 });
-removeScreenshotButton.addEventListener("click", (event) => { event.preventDefault(); clearScreenshot(); });
-dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("dragover"); });
-dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+removeScreenshotButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  clearScreenshot();
+});
+dropzone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  dropzone.classList.add("dragover");
+});
+dropzone.addEventListener("dragleave", () =>
+  dropzone.classList.remove("dragover"),
+);
 dropzone.addEventListener("drop", (event) => {
   event.preventDefault();
   dropzone.classList.remove("dragover");
@@ -186,11 +332,16 @@ dropzone.addEventListener("drop", (event) => {
   if (file) setScreenshot(file);
 });
 dropzone.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") { event.preventDefault(); paymentScreenshotInput.click(); }
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    paymentScreenshotInput.click();
+  }
 });
 submitPaymentButton.addEventListener("click", () => {
   if (!selectedScreenshot) return;
-  alert(`${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`);
+  alert(
+    `${paymentAccounts[selectedPaymentMethod].label} မှတစ်ဆင့် ငွေလွှဲပြေစာကို ပို့ပြီးပါပြီ။ Admin မှ အတည်ပြုပေးသည်အထိ ခဏစောင့်ပေးပါ။`,
+  );
   cart = {};
   renderProducts();
   renderCart();
@@ -199,19 +350,35 @@ submitPaymentButton.addEventListener("click", () => {
 });
 
 categoryTabs.addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-category]");
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    "[data-category]",
+  );
   if (!button) return;
-  activeCategory = button.dataset.category as Category;
+  const selectedCategory = button.dataset.category as Category;
+  activeCategory =
+    activeCategory === selectedCategory ? null : selectedCategory;
   renderCategories();
   renderProducts();
 });
-searchInput.addEventListener("input", () => { searchTerm = searchInput.value; renderProducts(); });
+searchInput.addEventListener("input", () => {
+  searchTerm = searchInput.value;
+  renderProducts();
+});
 sortSelect.addEventListener("change", renderProducts);
-document.querySelector("#bagButton")!.addEventListener("click", () => setDrawer(true));
-document.querySelector("#viewBag")!.addEventListener("click", () => setDrawer(true));
-document.querySelector("#closeBag")!.addEventListener("click", () => setDrawer(false));
+document
+  .querySelector("#bagButton")!
+  .addEventListener("click", () => setDrawer(true));
+document
+  .querySelector("#viewBag")!
+  .addEventListener("click", () => setDrawer(true));
+document
+  .querySelector("#closeBag")!
+  .addEventListener("click", () => setDrawer(false));
 drawerOverlay.addEventListener("click", () => setDrawer(false));
-document.querySelector("#searchToggle")!.addEventListener("click", () => { searchInput.focus(); searchInput.scrollIntoView({ behavior: "smooth", block: "center" }); });
+document.querySelector("#searchToggle")!.addEventListener("click", () => {
+  searchInput.focus();
+  searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+});
 
 renderCategories();
 renderProducts();
