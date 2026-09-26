@@ -254,6 +254,12 @@ h1 {
   line-height: 1.02;
   margin: 0;
 }
+.intro-statement {
+  font-size: 42px;
+  letter-spacing: 0;
+  line-height: 1.5;
+  max-width: 1120px;
+}
 h1 em {
   color: var(--gold-dark);
   font-style: italic;
@@ -1508,6 +1514,9 @@ h2 {
   .intro-copy {
     margin: 0;
     max-width: none;
+  }
+  .intro-statement {
+    font-size: 26px;
   }
 }
 @media (max-width: 700px) {
