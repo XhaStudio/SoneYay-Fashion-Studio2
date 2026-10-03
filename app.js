@@ -746,11 +746,13 @@ const selectedMedia = $("#selectedMedia");
 const uploadFeedback = $("#uploadFeedback");
 const showProductDelete = $("#showProductDelete");
 const productDeletePanel = $("#productDeletePanel");
-const productDeleteSelect = $("#productDeleteSelect");
+const productDeleteList = $("#productDeleteList");
+const selectAllProducts = $("#selectAllProducts");
 const deleteSelectedProduct = $("#deleteSelectedProduct");
 const productDeleteFeedback = $("#productDeleteFeedback");
 const deleteConfirmBackdrop = $("#deleteConfirmBackdrop");
 const deleteConfirmMessage = $("#deleteConfirmMessage");
+const deleteConfirmList = $("#deleteConfirmList");
 const cancelProductDelete = $("#cancelProductDelete");
 const confirmProductDelete = $("#confirmProductDelete");
 const productUploadForm = $("#productUploadForm");
@@ -778,7 +780,7 @@ let adminUnlocked = false;
 let selectedProductMedia = [];
 let selectedThumbnail = null;
 let activeDetailProduct = null;
-let pendingProductDelete = null;
+let pendingProductDeletes = [];
 
 function openAdminDialog() {
   adminDialogBackdrop.hidden = false;
@@ -797,28 +799,64 @@ function showControlPanel() {
   controlPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function renderProductDeleteOptions(selectedId = "") {
-  productDeleteSelect.replaceChildren(new Option("ပစ္စည်းရွေးပါ", ""));
-  products
-    .filter((product) => typeof product.id === "string")
-    .forEach((product) => {
-      const option = new Option(
-        `${product.name || "အမည်မရှိသောပစ္စည်း"}${product.category ? ` (${product.category})` : ""}`,
-        product.id,
-      );
-      productDeleteSelect.appendChild(option);
-    });
-  productDeleteSelect.value = selectedId;
-  deleteSelectedProduct.disabled = !productDeleteSelect.value;
-  if (products.length === 0)
-    productDeleteFeedback.textContent = "ဖျက်ရန်ပစ္စည်း မရှိပါ။";
-  else productDeleteFeedback.textContent = "";
+function renderProductDeleteOptions() {
+  const selectedIds = new Set(
+    Array.from(
+      productDeleteList.querySelectorAll(
+        'input[type="checkbox"]:checked',
+      ),
+    ).map((checkbox) => checkbox.value),
+  );
+  productDeleteList.replaceChildren();
+  const deletableProducts = products.filter(
+    (product) => typeof product.id === "string",
+  );
+  deletableProducts.forEach((product) => {
+    const label = document.createElement("label");
+    label.className = "product-delete-item";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = product.id;
+    checkbox.checked = selectedIds.has(product.id);
+    const details = document.createElement("span");
+    details.className = "product-delete-item-details";
+    const name = document.createElement("strong");
+    name.textContent = product.name || "အမည်မရှိသောပစ္စည်း";
+    const meta = document.createElement("small");
+    meta.textContent = [product.category, money(product.price)]
+      .filter(Boolean)
+      .join(" · ");
+    details.append(name, meta);
+    label.append(checkbox, details);
+    productDeleteList.appendChild(label);
+  });
+  syncProductDeleteSelection();
+  productDeleteFeedback.textContent =
+    deletableProducts.length === 0 ? "ဖျက်ရန်ပစ္စည်း မရှိပါ။" : "";
+}
+
+function syncProductDeleteSelection() {
+  const checkboxes = Array.from(
+    productDeleteList.querySelectorAll('input[type="checkbox"]'),
+  );
+  const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+  deleteSelectedProduct.disabled = selectedCount === 0;
+  deleteSelectedProduct.textContent =
+    selectedCount > 0
+      ? `ရွေးထားသည်များကို ဖျက်ရန် (${selectedCount})`
+      : "ရွေးထားသည်များကို ဖျက်ရန်";
+  selectAllProducts.checked =
+    checkboxes.length > 0 && selectedCount === checkboxes.length;
+  selectAllProducts.indeterminate =
+    selectedCount > 0 && selectedCount < checkboxes.length;
+  selectAllProducts.disabled = checkboxes.length === 0;
 }
 
 function closeProductDeleteConfirmation() {
   deleteConfirmBackdrop.hidden = true;
-  pendingProductDelete = null;
+  pendingProductDeletes = [];
   confirmProductDelete.disabled = false;
+  cancelProductDelete.disabled = false;
   confirmProductDelete.textContent = "Confirm";
 }
 
@@ -1086,26 +1124,47 @@ showProductDelete.addEventListener("click", () => {
   productDeletePanel.hidden = !open;
   showProductDelete.setAttribute("aria-expanded", String(open));
   if (open) {
-    renderProductDeleteOptions(productDeleteSelect.value);
-    productDeleteSelect.focus();
+    renderProductDeleteOptions();
+    productDeleteList.querySelector("input")?.focus();
   }
 });
-productDeleteSelect.addEventListener("change", () => {
-  deleteSelectedProduct.disabled = !productDeleteSelect.value;
+productDeleteList.addEventListener("change", () => {
   productDeleteFeedback.textContent = "";
+  syncProductDeleteSelection();
+});
+selectAllProducts.addEventListener("change", () => {
+  productDeleteList
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((checkbox) => {
+      checkbox.checked = selectAllProducts.checked;
+    });
+  syncProductDeleteSelection();
 });
 deleteSelectedProduct.addEventListener("click", () => {
   if (!adminUnlocked) return;
-  const product = products.find(
-    (item) => item.id === productDeleteSelect.value,
+  const selectedIds = new Set(
+    Array.from(
+      productDeleteList.querySelectorAll(
+        'input[type="checkbox"]:checked',
+      ),
+    ).map((checkbox) => checkbox.value),
   );
-  if (!product) {
-    productDeleteFeedback.textContent = "ဖျက်မည့်ပစ္စည်းကို ရွေးပေးပါ။";
-    renderProductDeleteOptions();
+  pendingProductDeletes = products.filter(
+    (product) =>
+      typeof product.id === "string" && selectedIds.has(product.id),
+  );
+  if (pendingProductDeletes.length === 0) {
+    productDeleteFeedback.textContent = "ဖျက်မည့်ပစ္စည်းများကို ရွေးပေးပါ။";
+    syncProductDeleteSelection();
     return;
   }
-  pendingProductDelete = product;
-  deleteConfirmMessage.textContent = product.name || "ဤပစ္စည်း";
+  deleteConfirmMessage.textContent = `${pendingProductDeletes.length} ခုသော ပစ္စည်းကို ဖျက်မည်။`;
+  deleteConfirmList.replaceChildren();
+  pendingProductDeletes.forEach((product) => {
+    const item = document.createElement("li");
+    item.textContent = product.name || "အမည်မရှိသောပစ္စည်း";
+    deleteConfirmList.appendChild(item);
+  });
   deleteConfirmBackdrop.hidden = false;
   confirmProductDelete.focus();
 });
@@ -1114,12 +1173,12 @@ cancelProductDelete.addEventListener(
   closeProductDeleteConfirmation,
 );
 deleteConfirmBackdrop.addEventListener("click", (event) => {
-  if (event.target === deleteConfirmBackdrop)
+  if (event.target === deleteConfirmBackdrop && !confirmProductDelete.disabled)
     closeProductDeleteConfirmation();
 });
 confirmProductDelete.addEventListener("click", async () => {
-  const product = pendingProductDelete;
-  if (!adminUnlocked || !product || typeof product.id !== "string") {
+  const productsToDelete = pendingProductDeletes;
+  if (!adminUnlocked || productsToDelete.length === 0) {
     closeProductDeleteConfirmation();
     return;
   }
@@ -1129,25 +1188,47 @@ confirmProductDelete.addEventListener("click", async () => {
   confirmProductDelete.textContent = "Deleting...";
   try {
     await window.firebaseReady;
-    await firebase.firestore().collection("products").doc(product.id).delete();
-    products = products.filter((item) => item.id !== product.id);
-    delete cart[product.id];
+    const firestore = firebase.firestore();
+    const results = await Promise.allSettled(
+      productsToDelete.map((product) =>
+        firestore.collection("products").doc(product.id).delete(),
+      ),
+    );
+    const deletedIds = new Set();
+    const failedProducts = [];
+    results.forEach((result, index) => {
+      const product = productsToDelete[index];
+      if (result.status === "fulfilled") deletedIds.add(product.id);
+      else {
+        console.error(`Could not delete product ${product.id}:`, result.reason);
+        failedProducts.push(product);
+      }
+    });
+    products = products.filter((product) => !deletedIds.has(product.id));
+    deletedIds.forEach((id) => delete cart[id]);
     renderProducts();
     renderCart();
     renderProductDeleteOptions();
-    productDeleteFeedback.textContent = "ပစ္စည်းကို ဖျက်ပြီးပါပြီ။";
+    if (failedProducts.length > 0) {
+      productDeleteFeedback.textContent =
+        `${deletedIds.size} ခု ဖျက်ပြီး၊ ${failedProducts.length} ခု ဖျက်၍မရပါ။ ထပ်ကြိုးစားပါ။`;
+    } else {
+      productDeleteFeedback.textContent = `${deletedIds.size} ခုသော ပစ္စည်းကို ဖျက်ပြီးပါပြီ။`;
+    }
     closeProductDeleteConfirmation();
   } catch (error) {
-    console.error("Could not delete selected product:", error);
+    console.error("Could not delete selected products:", error);
     productDeleteFeedback.textContent =
-      "ပစ္စည်းကို ဖျက်၍မရပါ။ ခွင့်ပြုချက်နှင့် အင်တာနက်ကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
+      "ပစ္စည်းများကို ဖျက်၍မရပါ။ ခွင့်ပြုချက်နှင့် အင်တာနက်ကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
     closeProductDeleteConfirmation();
-  } finally {
-    cancelProductDelete.disabled = false;
   }
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !deleteConfirmBackdrop.hidden)
+  if (
+    event.key === "Escape" &&
+    !deleteConfirmBackdrop.hidden &&
+    !confirmProductDelete.disabled
+  )
     closeProductDeleteConfirmation();
 });
 choiceList.addEventListener("input", (event) => {
@@ -1250,7 +1331,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     products.unshift(newProduct);
     scheduleStockOutCleanup(newProduct);
     renderProducts();
-    renderProductDeleteOptions(productDeleteSelect.value);
+    renderProductDeleteOptions();
     uploadFeedback.textContent = "ပစ္စည်းတင်ပြီးပါပြီ။";
     productUploadForm.reset();
     $("#itemStocks").value = "0";
@@ -1297,6 +1378,7 @@ async function loadSavedProducts() {
     ];
     savedProducts.forEach(scheduleStockOutCleanup);
     renderProducts();
+    if (!controlPanel.hidden) renderProductDeleteOptions();
   } catch (error) {
     console.error("Could not load saved products:", error);
   } finally {
