@@ -564,6 +564,7 @@ async function removeStockOutProduct(product) {
   delete cart[product.id];
   renderProducts();
   renderCart();
+  renderProductDeleteOptions();
 }
 
 function scheduleStockOutCleanup(product) {
@@ -743,6 +744,15 @@ const productMediaDropzone = $("#productMediaDropzone");
 const productMediaInput = $("#productMedia");
 const selectedMedia = $("#selectedMedia");
 const uploadFeedback = $("#uploadFeedback");
+const showProductDelete = $("#showProductDelete");
+const productDeletePanel = $("#productDeletePanel");
+const productDeleteSelect = $("#productDeleteSelect");
+const deleteSelectedProduct = $("#deleteSelectedProduct");
+const productDeleteFeedback = $("#productDeleteFeedback");
+const deleteConfirmBackdrop = $("#deleteConfirmBackdrop");
+const deleteConfirmMessage = $("#deleteConfirmMessage");
+const cancelProductDelete = $("#cancelProductDelete");
+const confirmProductDelete = $("#confirmProductDelete");
 const productUploadForm = $("#productUploadForm");
 const uploadProductButton = productUploadForm.querySelector(
   ".upload-product-button",
@@ -768,6 +778,7 @@ let adminUnlocked = false;
 let selectedProductMedia = [];
 let selectedThumbnail = null;
 let activeDetailProduct = null;
+let pendingProductDelete = null;
 
 function openAdminDialog() {
   adminDialogBackdrop.hidden = false;
@@ -782,7 +793,33 @@ function closeAdminDialog() {
 
 function showControlPanel() {
   controlPanel.hidden = false;
+  renderProductDeleteOptions();
   controlPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderProductDeleteOptions(selectedId = "") {
+  productDeleteSelect.replaceChildren(new Option("ပစ္စည်းရွေးပါ", ""));
+  products
+    .filter((product) => typeof product.id === "string")
+    .forEach((product) => {
+      const option = new Option(
+        `${product.name || "အမည်မရှိသောပစ္စည်း"}${product.category ? ` (${product.category})` : ""}`,
+        product.id,
+      );
+      productDeleteSelect.appendChild(option);
+    });
+  productDeleteSelect.value = selectedId;
+  deleteSelectedProduct.disabled = !productDeleteSelect.value;
+  if (products.length === 0)
+    productDeleteFeedback.textContent = "ဖျက်ရန်ပစ္စည်း မရှိပါ။";
+  else productDeleteFeedback.textContent = "";
+}
+
+function closeProductDeleteConfirmation() {
+  deleteConfirmBackdrop.hidden = true;
+  pendingProductDelete = null;
+  confirmProductDelete.disabled = false;
+  confirmProductDelete.textContent = "Confirm";
 }
 
 function renderSelectedMedia() {
@@ -1044,6 +1081,75 @@ thumbnailDropzone.addEventListener("drop", (event) => {
   if (file) setThumbnail(file);
 });
 addChoiceButton.addEventListener("click", addChoiceRow);
+showProductDelete.addEventListener("click", () => {
+  const open = productDeletePanel.hidden;
+  productDeletePanel.hidden = !open;
+  showProductDelete.setAttribute("aria-expanded", String(open));
+  if (open) {
+    renderProductDeleteOptions(productDeleteSelect.value);
+    productDeleteSelect.focus();
+  }
+});
+productDeleteSelect.addEventListener("change", () => {
+  deleteSelectedProduct.disabled = !productDeleteSelect.value;
+  productDeleteFeedback.textContent = "";
+});
+deleteSelectedProduct.addEventListener("click", () => {
+  if (!adminUnlocked) return;
+  const product = products.find(
+    (item) => item.id === productDeleteSelect.value,
+  );
+  if (!product) {
+    productDeleteFeedback.textContent = "ဖျက်မည့်ပစ္စည်းကို ရွေးပေးပါ။";
+    renderProductDeleteOptions();
+    return;
+  }
+  pendingProductDelete = product;
+  deleteConfirmMessage.textContent = product.name || "ဤပစ္စည်း";
+  deleteConfirmBackdrop.hidden = false;
+  confirmProductDelete.focus();
+});
+cancelProductDelete.addEventListener(
+  "click",
+  closeProductDeleteConfirmation,
+);
+deleteConfirmBackdrop.addEventListener("click", (event) => {
+  if (event.target === deleteConfirmBackdrop)
+    closeProductDeleteConfirmation();
+});
+confirmProductDelete.addEventListener("click", async () => {
+  const product = pendingProductDelete;
+  if (!adminUnlocked || !product || typeof product.id !== "string") {
+    closeProductDeleteConfirmation();
+    return;
+  }
+
+  confirmProductDelete.disabled = true;
+  cancelProductDelete.disabled = true;
+  confirmProductDelete.textContent = "Deleting...";
+  try {
+    await window.firebaseReady;
+    await firebase.firestore().collection("products").doc(product.id).delete();
+    products = products.filter((item) => item.id !== product.id);
+    delete cart[product.id];
+    renderProducts();
+    renderCart();
+    renderProductDeleteOptions();
+    productDeleteFeedback.textContent = "ပစ္စည်းကို ဖျက်ပြီးပါပြီ။";
+    closeProductDeleteConfirmation();
+  } catch (error) {
+    console.error("Could not delete selected product:", error);
+    productDeleteFeedback.textContent =
+      "ပစ္စည်းကို ဖျက်၍မရပါ။ ခွင့်ပြုချက်နှင့် အင်တာနက်ကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
+    closeProductDeleteConfirmation();
+  } finally {
+    cancelProductDelete.disabled = false;
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !deleteConfirmBackdrop.hidden)
+    closeProductDeleteConfirmation();
+});
 choiceList.addEventListener("input", (event) => {
   if (event.target.matches(".choice-stock-input")) updateTotalStock();
 });
@@ -1144,6 +1250,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     products.unshift(newProduct);
     scheduleStockOutCleanup(newProduct);
     renderProducts();
+    renderProductDeleteOptions(productDeleteSelect.value);
     uploadFeedback.textContent = "ပစ္စည်းတင်ပြီးပါပြီ။";
     productUploadForm.reset();
     $("#itemStocks").value = "0";
