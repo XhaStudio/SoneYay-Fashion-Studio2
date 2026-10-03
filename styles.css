@@ -624,6 +624,101 @@ h1 em {
 .upload-product-button:hover {
   background: #35312c;
 }
+.product-delete-section {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  max-width: 680px;
+  padding-top: 18px;
+}
+.product-delete-toggle {
+  background: transparent;
+  color: var(--coral);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 0;
+}
+.product-delete-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.product-delete-panel[hidden] {
+  display: none;
+}
+.product-delete-panel > label {
+  color: var(--muted);
+  font-size: 11px;
+}
+.product-delete-actions {
+  display: flex;
+  gap: 10px;
+}
+.product-delete-actions select {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  padding: 11px 12px;
+}
+.product-delete-button,
+.delete-confirm-button {
+  background: #b33b32;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 16px;
+}
+.product-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.product-delete-feedback {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+  min-height: 16px;
+}
+.delete-confirm-backdrop {
+  align-items: center;
+  background: rgba(32, 29, 26, 0.55);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 21;
+}
+.delete-confirm-backdrop[hidden] {
+  display: none;
+}
+.delete-confirm-dialog {
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  max-width: 380px;
+  padding: 28px;
+  width: 100%;
+}
+.delete-confirm-dialog .eyebrow {
+  margin-bottom: 8px;
+}
+.delete-confirm-dialog h2 {
+  margin: 0 0 8px;
+}
+.delete-confirm-dialog > p:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.delete-confirm-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
 .product-video {
   aspect-ratio: 0.78;
   object-fit: cover;
