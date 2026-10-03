@@ -267,6 +267,38 @@
             ပစ္စည်းတင်ရန်
           </button>
         </form>
+        <section class="product-delete-section" aria-label="ပစ္စည်းဖျက်ရန်">
+          <button
+            class="product-delete-toggle"
+            id="showProductDelete"
+            type="button"
+            aria-expanded="false"
+            aria-controls="productDeletePanel"
+          >
+            ပစ္စည်းဖျက်ရန်
+          </button>
+          <div class="product-delete-panel" id="productDeletePanel" hidden>
+            <label for="productDeleteSelect">ဖျက်လိုသောပစ္စည်းကို ရွေးပါ</label>
+            <div class="product-delete-actions">
+              <select id="productDeleteSelect">
+                <option value="">ပစ္စည်းရွေးပါ</option>
+              </select>
+              <button
+                class="product-delete-button"
+                id="deleteSelectedProduct"
+                type="button"
+                disabled
+              >
+                Delete
+              </button>
+            </div>
+            <p
+              class="product-delete-feedback"
+              id="productDeleteFeedback"
+              role="status"
+            ></p>
+          </div>
+        </section>
       </section>
 
       <section class="catalog" id="catalog" aria-live="polite"></section>
@@ -477,6 +509,29 @@
           </button>
         </div>
       </form>
+    </div>
+
+    <div class="delete-confirm-backdrop" id="deleteConfirmBackdrop" hidden>
+      <section
+        class="delete-confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deleteConfirmTitle"
+      >
+        <p class="eyebrow">အတည်ပြုရန်</p>
+        <h2 id="deleteConfirmTitle">Are you sure?</h2>
+        <p id="deleteConfirmMessage"></p>
+        <div class="admin-dialog-actions">
+          <button id="cancelProductDelete" type="button">Cancel</button>
+          <button
+            class="delete-confirm-button"
+            id="confirmProductDelete"
+            type="button"
+          >
+            Confirm
+          </button>
+        </div>
+      </section>
     </div>
 
     <div class="product-detail-backdrop" id="productDetailBackdrop" hidden>
