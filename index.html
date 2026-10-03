@@ -143,6 +143,48 @@
             ×
           </button>
         </div>
+        <section class="product-delete-section" aria-label="ပစ္စည်းဖျက်ရန်">
+          <button
+            class="product-delete-toggle"
+            id="showProductDelete"
+            type="button"
+            aria-expanded="false"
+            aria-controls="productDeletePanel"
+          >
+            <span class="delete-toggle-title">ပစ္စည်းဖျက်ရန်</span>
+            <span class="delete-toggle-description">ပစ္စည်းများစွာကို တစ်ပြိုင်နက် ရွေးချယ်ဖျက်နိုင်သည်</span>
+          </button>
+          <div class="product-delete-panel" id="productDeletePanel" hidden>
+            <div class="product-delete-list-heading">
+              <span>ဖျက်လိုသောပစ္စည်းများကို ရွေးပါ</span>
+              <label class="select-all-products">
+                <input id="selectAllProducts" type="checkbox" />
+                <span>အားလုံးရွေးရန်</span>
+              </label>
+            </div>
+            <div
+              class="product-delete-list"
+              id="productDeleteList"
+              role="group"
+              aria-label="ဖျက်မည့်ပစ္စည်းများ"
+            ></div>
+            <div class="product-delete-actions">
+              <p
+                class="product-delete-feedback"
+                id="productDeleteFeedback"
+                role="status"
+              ></p>
+              <button
+                class="product-delete-button"
+                id="deleteSelectedProduct"
+                type="button"
+                disabled
+              >
+                ရွေးထားသည်များကို ဖျက်ရန်
+              </button>
+            </div>
+          </div>
+        </section>
         <form class="product-upload-form" id="productUploadForm">
           <label
             >ပစ္စည်းအမည်<input
@@ -267,38 +309,6 @@
             ပစ္စည်းတင်ရန်
           </button>
         </form>
-        <section class="product-delete-section" aria-label="ပစ္စည်းဖျက်ရန်">
-          <button
-            class="product-delete-toggle"
-            id="showProductDelete"
-            type="button"
-            aria-expanded="false"
-            aria-controls="productDeletePanel"
-          >
-            ပစ္စည်းဖျက်ရန်
-          </button>
-          <div class="product-delete-panel" id="productDeletePanel" hidden>
-            <label for="productDeleteSelect">ဖျက်လိုသောပစ္စည်းကို ရွေးပါ</label>
-            <div class="product-delete-actions">
-              <select id="productDeleteSelect">
-                <option value="">ပစ္စည်းရွေးပါ</option>
-              </select>
-              <button
-                class="product-delete-button"
-                id="deleteSelectedProduct"
-                type="button"
-                disabled
-              >
-                Delete
-              </button>
-            </div>
-            <p
-              class="product-delete-feedback"
-              id="productDeleteFeedback"
-              role="status"
-            ></p>
-          </div>
-        </section>
       </section>
 
       <section class="catalog" id="catalog" aria-live="polite"></section>
@@ -521,6 +531,7 @@
         <p class="eyebrow">အတည်ပြုရန်</p>
         <h2 id="deleteConfirmTitle">Are you sure?</h2>
         <p id="deleteConfirmMessage"></p>
+        <ul class="delete-confirm-list" id="deleteConfirmList"></ul>
         <div class="admin-dialog-actions">
           <button id="cancelProductDelete" type="button">Cancel</button>
           <button
