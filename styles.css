@@ -538,11 +538,46 @@ h1 em {
   gap: 8px;
 }
 .choice-row {
+  align-items: center;
   display: flex;
   gap: 8px;
 }
+.choice-field-group {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+.choice-row .choice-input,
+.choice-row .choice-stock-input {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 9px 10px;
+}
 .choice-row .choice-input {
   flex: 1;
+}
+.choice-stock-field {
+  align-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  display: inline-flex;
+  gap: 7px;
+  padding: 0 10px 0 8px;
+  white-space: nowrap;
+}
+.choice-stock-field span {
+  font-size: 10px;
+  font-weight: 700;
+}
+.choice-row .choice-stock-input {
+  border: 0;
+  min-width: 52px;
+  padding: 9px 0 9px 0;
+  width: 54px;
 }
 .remove-choice-button {
   background: var(--paper);
@@ -954,6 +989,15 @@ h1 em {
   font-size: 12px;
   gap: 5px;
   padding: 9px 13px;
+}
+.detail-choices label.is-out {
+  border-color: rgba(198, 93, 63, 0.4);
+  color: var(--muted);
+  opacity: 0.7;
+}
+.detail-choices small {
+  color: var(--muted);
+  font-size: 10px;
 }
 .detail-choices input {
   accent-color: var(--coral);
