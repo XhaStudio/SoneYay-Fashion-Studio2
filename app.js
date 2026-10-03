@@ -849,14 +849,61 @@ function clearThumbnail() {
   thumbnailVideo.removeAttribute("src");
 }
 
+function normalizeChoiceItems(choices) {
+  return (Array.isArray(choices) ? choices : [])
+    .map((choice) => {
+      if (typeof choice === "string") {
+        const label = choice.trim();
+        return label ? { label, stock: null } : { label: "", stock: null };
+      }
+      if (choice && typeof choice === "object") {
+        const rawLabel =
+          typeof choice.label === "string"
+            ? choice.label
+            : typeof choice.name === "string"
+              ? choice.name
+              : typeof choice.value === "string"
+                ? choice.value
+                : "";
+        const label = rawLabel.trim();
+        const rawStock = Number(choice.stock);
+        return {
+          label,
+          stock: Number.isFinite(rawStock) && rawStock >= 0 ? rawStock : null,
+        };
+      }
+      return { label: "", stock: null };
+    })
+    .filter((choice) => choice.label);
+}
+
 function addChoiceRow() {
   const row = document.createElement("div");
   row.className = "choice-row";
-  row.innerHTML = `<input class="choice-input" type="text" placeholder="ပစ္စည်းအမည် သို့မဟုတ် အရောင်" aria-label="ပစ္စည်းအမည် သို့မဟုတ် အရောင်ရွေးချယ်စရာ" required /><button class="remove-choice-button" type="button" aria-label="ရွေးချယ်စရာကို ဖယ်ရန်">×</button>`;
+  row.innerHTML = `
+    <div class="choice-field-group">
+      <input class="choice-input" type="text" placeholder="ပစ္စည်းအမည် သို့မဟုတ် အရောင်" aria-label="ပစ္စည်းအမည် သို့မဟုတ် အရောင်ရွေးချယ်စရာ" required />
+      <label class="choice-stock-field">
+        <span>လက်ကျန်</span>
+        <input class="choice-stock-input" type="number" min="0" step="1" value="0" placeholder="0" aria-label="ပစ္စည်းအမည်အတွက် လက်ကျန်အရေအတွက်" required />
+      </label>
+    </div>
+    <button class="remove-choice-button" type="button" aria-label="ရွေးချယ်စရာကို ဖယ်ရန်">×</button>
+  `;
   row
     .querySelector(".remove-choice-button")
-    .addEventListener("click", () => row.remove());
+    .addEventListener("click", () => {
+      row.remove();
+      updateTotalStock();
+    });
   choiceList.appendChild(row);
+  updateTotalStock();
+}
+
+function updateTotalStock() {
+  const total = Array.from(choiceList.querySelectorAll(".choice-stock-input"))
+    .reduce((sum, input) => sum + Math.max(0, Number(input.value) || 0), 0);
+  $("#itemStocks").value = String(total);
 }
 
 function openProductDetail(product) {
@@ -876,11 +923,15 @@ function openProductDetail(product) {
     ? "လက်ကျန်မရှိပါ"
     : "အိတ်ထဲထည့်ရန် <span>+</span>";
   detailProductDescription.textContent = product.meta || "";
-  detailChoices.innerHTML = (product.choices || [])
-    .map(
-      (choice, index) =>
-        `<label><input type="radio" name="detail-choice" value="${choice}" ${index === 0 ? "checked" : ""} /> <span>${choice}</span></label>`,
-    )
+  const choices = normalizeChoiceItems(product.choices);
+  detailChoices.innerHTML = choices
+    .map((choice, index) => {
+      const stock = Number.isFinite(Number(choice.stock))
+        ? Number(choice.stock)
+        : 0;
+      const stockText = stock > 0 ? `လက်ကျန် ${stock}` : "လက်ကျန်မရှိ";
+      return `<label class="${stock <= 0 ? "is-out" : ""}"><input type="radio" name="detail-choice" value="${choice.label}" ${index === 0 ? "checked" : ""} ${stock <= 0 ? "disabled" : ""} /> <span>${choice.label}</span><small>(${stockText})</small></label>`;
+    })
     .join("");
   const galleryItems = [];
   if (product.detailMediaUrls && product.detailMediaUrls.length)
@@ -993,6 +1044,9 @@ thumbnailDropzone.addEventListener("drop", (event) => {
   if (file) setThumbnail(file);
 });
 addChoiceButton.addEventListener("click", addChoiceRow);
+choiceList.addEventListener("input", (event) => {
+  if (event.target.matches(".choice-stock-input")) updateTotalStock();
+});
 productUploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!adminUnlocked) {
@@ -1004,6 +1058,27 @@ productUploadForm.addEventListener("submit", async (event) => {
       "အဓိကပုံ သို့မဟုတ် အသေးစိတ်ဓာတ်ပုံ/ဗီဒီယို အနည်းဆုံးတစ်ခု ထည့်ပါ။";
     return;
   }
+  if (choiceList.querySelectorAll(".choice-row").length === 0) {
+    uploadFeedback.textContent =
+      "စုစုပေါင်းလက်ကျန်တွက်ရန် အနည်းဆုံးရွေးချယ်စရာတစ်ခု ထည့်ပါ။";
+    return;
+  }
+  const choices = Array.from(choiceList.querySelectorAll(".choice-row"))
+    .map((row) => {
+      const label = row.querySelector(".choice-input").value.trim();
+      const stockValue = Number(row.querySelector(".choice-stock-input").value);
+      if (!label) return null;
+      return {
+        label,
+        stock: Number.isFinite(stockValue) && stockValue >= 0 ? stockValue : 0,
+      };
+    })
+    .filter(Boolean);
+  if (choices.length === 0) {
+    uploadFeedback.textContent =
+      "စုစုပေါင်းလက်ကျန်တွက်ရန် အနည်းဆုံးရွေးချယ်စရာတစ်ခု ထည့်ပါ။";
+    return;
+  }
   const productId = firebase.firestore().collection("products").doc().id;
   const product = {
     id: productId,
@@ -1011,10 +1086,8 @@ productUploadForm.addEventListener("submit", async (event) => {
     category: $("#itemCategory").value,
     meta: $("#itemDescription").value.trim(),
     price: Number($("#itemPrice").value),
-    stock: Number($("#itemStocks").value),
-    choices: Array.from(choiceList.querySelectorAll(".choice-input"))
-      .map((input) => input.value.trim())
-      .filter(Boolean),
+    stock: choices.reduce((total, choice) => total + choice.stock, 0),
+    choices,
   };
   uploadProductButton.disabled = true;
   uploadProductButton.textContent = "တင်နေသည်...";
@@ -1073,6 +1146,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     renderProducts();
     uploadFeedback.textContent = "ပစ္စည်းတင်ပြီးပါပြီ။";
     productUploadForm.reset();
+    $("#itemStocks").value = "0";
     selectedProductMedia = [];
     clearThumbnail();
     choiceList.innerHTML = "";
