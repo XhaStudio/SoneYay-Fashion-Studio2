@@ -625,43 +625,116 @@ h1 em {
   background: #35312c;
 }
 .product-delete-section {
-  border-top: 1px solid var(--line);
-  margin-top: 24px;
-  max-width: 680px;
-  padding-top: 18px;
+  background: var(--paper);
+  border: 1px solid rgba(179, 59, 50, 0.32);
+  border-left: 4px solid #b33b32;
+  border-radius: var(--radius-sm);
+  margin-bottom: 24px;
+  max-width: 760px;
+  padding: 12px;
 }
 .product-delete-toggle {
-  background: transparent;
-  color: var(--coral);
-  font-size: 12px;
+  align-items: center;
+  background: #b33b32;
+  border-radius: var(--radius-sm);
+  color: white;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
   font-weight: 700;
-  padding: 8px 0;
+  gap: 6px 14px;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 10px 14px;
+  text-align: left;
+  width: 100%;
+}
+.product-delete-toggle:hover {
+  background: #972e27;
+}
+.delete-toggle-title {
+  font-size: 14px;
+}
+.delete-toggle-description {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.9;
 }
 .product-delete-panel {
   display: grid;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 12px;
+  padding: 16px 4px 4px;
 }
 .product-delete-panel[hidden] {
   display: none;
 }
-.product-delete-panel > label {
-  color: var(--muted);
-  font-size: 11px;
-}
-.product-delete-actions {
+.product-delete-list-heading {
+  align-items: center;
+  color: var(--ink);
   display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 700;
   gap: 10px;
+  justify-content: space-between;
 }
-.product-delete-actions select {
-  background: var(--paper);
+.select-all-products {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 500;
+  gap: 7px;
+}
+.select-all-products input,
+.product-delete-item input {
+  accent-color: #b33b32;
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+.product-delete-list {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  color: var(--ink);
-  flex: 1;
-  font: inherit;
+  display: grid;
+  max-height: 280px;
+  overflow: auto;
+}
+.product-delete-item {
+  align-items: center;
+  background: var(--paper);
+  cursor: pointer;
+  display: flex;
+  gap: 11px;
+  min-height: 56px;
+  padding: 9px 12px;
+}
+.product-delete-item + .product-delete-item {
+  border-top: 1px solid var(--line);
+}
+.product-delete-item:hover {
+  background: var(--card);
+}
+.product-delete-item-details {
+  display: grid;
+  gap: 3px;
   min-width: 0;
-  padding: 11px 12px;
+}
+.product-delete-item-details strong {
+  color: var(--ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.product-delete-item-details small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.product-delete-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
 }
 .product-delete-button,
 .delete-confirm-button {
@@ -670,7 +743,12 @@ h1 em {
   color: white;
   font-size: 11px;
   font-weight: 700;
+  min-height: 40px;
   padding: 0 16px;
+}
+.product-delete-button:hover:not(:disabled),
+.delete-confirm-button:hover:not(:disabled) {
+  background: #972e27;
 }
 .product-delete-button:disabled {
   cursor: not-allowed;
@@ -712,8 +790,19 @@ h1 em {
 .delete-confirm-dialog > p:not(.eyebrow) {
   color: var(--muted);
   font-size: 13px;
-  margin: 0;
+  margin: 0 0 10px;
   overflow-wrap: anywhere;
+}
+.delete-confirm-list {
+  color: var(--ink);
+  font-size: 12px;
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding-left: 20px;
+}
+.delete-confirm-list li + li {
+  margin-top: 5px;
 }
 .delete-confirm-button:disabled {
   cursor: wait;
