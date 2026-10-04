@@ -10,6 +10,7 @@
   --serif: "Playfair Display", Georgia, serif;
   --sans: "Noto Sans Myanmar", "DM Sans", sans-serif;
   --radius: 14px;
+  
   --radius-sm: 9px;
   --shadow-soft: 0 8px 24px -14px rgba(32, 29, 26, 0.35);
   --shadow-lift: 0 18px 40px -18px rgba(32, 29, 26, 0.45);
