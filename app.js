@@ -872,7 +872,12 @@ function renderSelectedMedia() {
 // Firestore has no built-in file storage here, so images are persisted as
 // compressed base64 data URLs directly on the product document (videos are
 // left as session-only blob previews — too large to store this way).
-function imageFileToDataUrl(file, maxDim = 1000, quality = 0.72) {
+function imageFileToDataUrl(
+  file,
+  maxDim = 1000,
+  quality = 0.72,
+  maxDataUrlLength = Infinity,
+) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error);
@@ -880,14 +885,28 @@ function imageFileToDataUrl(file, maxDim = 1000, quality = 0.72) {
       const img = new Image();
       img.onerror = () => reject(new Error("Could not read image"));
       img.onload = () => {
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas
-          .getContext("2d")
-          .drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        const dimensions = [maxDim, 850, 700, 550, 450];
+        const qualities = [quality, 0.62, 0.52, 0.42];
+        for (const dimension of dimensions) {
+          const scale = Math.min(1, dimension / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const context = canvas.getContext("2d");
+          if (!context) {
+            reject(new Error("Could not prepare image"));
+            return;
+          }
+          context.drawImage(img, 0, 0, canvas.width, canvas.height);
+          for (const imageQuality of qualities) {
+            const dataUrl = canvas.toDataURL("image/jpeg", imageQuality);
+            if (dataUrl.length <= maxDataUrlLength) {
+              resolve(dataUrl);
+              return;
+            }
+          }
+        }
+        reject(new Error("IMAGE_SIZE_LIMIT"));
       };
       img.src = reader.result;
     };
@@ -1294,20 +1313,18 @@ productUploadForm.addEventListener("submit", async (event) => {
 
     // Only images are persisted (compressed to keep each product doc under
     // Firestore's 1MB limit); videos stay as local-only previews for now.
-    const imageFiles = selectedThumbnail
+    const imageFiles = (selectedThumbnail
       ? [selectedThumbnail, ...selectedProductMedia]
-      : selectedProductMedia;
+      : selectedProductMedia).filter((file) => file.type.startsWith("image/"));
+    const perImageBudget = Math.floor(800000 / imageFiles.length);
     const dataUrls = await Promise.all(
-      imageFiles
-        .filter((file) => file.type.startsWith("image/"))
-        .map((file) => imageFileToDataUrl(file)),
+      imageFiles.map((file) =>
+        imageFileToDataUrl(file, 1000, 0.72, perImageBudget),
+      ),
     );
     const totalBytes = dataUrls.reduce((sum, url) => sum + url.length, 0);
     if (totalBytes > 900000) {
-      // Too many/too large photos for one Firestore doc — keep the thumbnail only.
-      dataUrls.length = 1;
-      uploadFeedback.textContent =
-        "ဓာတ်ပုံများ အရွယ်အစားကြီးသောကြောင့် Firebase အရွယ်အစားကန့်သတ်ချက်နှင့် ကိုက်ညီရန် အဓိကပုံတစ်ပုံသာ သိမ်းထားပါသည်။";
+      throw new Error("IMAGE_SIZE_LIMIT");
     }
     const detailMediaUrls = dataUrls.map((url, i) => ({
       url,
@@ -1342,9 +1359,11 @@ productUploadForm.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Product upload failed:", error);
     uploadFeedback.textContent =
-      error.code === "permission-denied"
-        ? "Firebase က ပစ္စည်းတင်ခွင့်ကို ပယ်ချလိုက်ပါသည်။ Firestore စည်းမျဉ်းများတွင် အတည်ပြုထားသောအသုံးပြုသူများကို ပစ္စည်းရေးသားခွင့်ပြုပါ။"
-        : "တင်၍မရပါ။ Firebase ပြင်ဆင်မှုကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
+      error.message === "IMAGE_SIZE_LIMIT"
+        ? "ဓာတ်ပုံအားလုံးကို အရွယ်အစားလျှော့ပြီးပါပြီ။ ဖိုင်အရွယ်အစား များနေသေးပါက ပုံအရေအတွက်လျှော့ပြီး ထပ်တင်ပါ။"
+        : error.code === "permission-denied"
+          ? "Firebase က ပစ္စည်းတင်ခွင့်ကို ပယ်ချလိုက်ပါသည်။ Firestore စည်းမျဉ်းများတွင် အတည်ပြုထားသောအသုံးပြုသူများကို ပစ္စည်းရေးသားခွင့်ပြုပါ။"
+          : "တင်၍မရပါ။ Firebase ပြင်ဆင်မှုကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
   } finally {
     uploadProductButton.disabled = false;
     uploadProductButton.textContent = "ပစ္စည်းတင်ရန်";
