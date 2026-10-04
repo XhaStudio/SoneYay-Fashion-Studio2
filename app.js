@@ -40,6 +40,7 @@ const loadingScreen = $("#loadingScreen"),
   loadingMessage = $("#loadingMessage");
 const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
 const STOCK_OUT_GRACE_MS = 4 * 60 * 60 * 1000;
+const stockOutCleanupTimers = new Map();
 function showLoading(message) {
   loadingMessage.textContent = message;
   loadingScreen.classList.remove("is-hidden");
@@ -351,9 +352,9 @@ const dropzone = $("#dropzone"),
 const paymentScreenshotInput = $("#paymentScreenshot"),
   removeScreenshotButton = $("#removeScreenshotButton"),
   submitPaymentButton = $("#submitPaymentButton");
-const paymentStepContent = $("#paymentStepContent"),
-  orderSuccess = $("#orderSuccess"),
-  successSub = $("#successSub");
+const orderSuccess = $("#orderSuccess"),
+  successSub = $("#successSub"),
+  successOkButton = $("#successOkButton");
 
 function showCheckoutStep() {
   checkoutStep.hidden = false;
@@ -362,8 +363,6 @@ function showCheckoutStep() {
 function showPaymentStep() {
   checkoutStep.hidden = true;
   paymentStep.hidden = false;
-  paymentStepContent.hidden = false;
-  orderSuccess.hidden = true;
 }
 
 function setPaymentMethod(method) {
@@ -541,24 +540,60 @@ function resetCartAndForm() {
 }
 
 function showOrderSuccess(message) {
-  paymentStepContent.hidden = true;
   successSub.textContent = message;
   orderSuccess.hidden = false;
+  orderSuccess.setAttribute("aria-hidden", "false");
+  successOkButton.focus();
 }
 
-function stockOutTimestamp(product) {
-  if (!product.stockOutAt) return null;
-  if (typeof product.stockOutAt.toDate === "function")
-    return product.stockOutAt.toDate().getTime();
-  if (product.stockOutAt instanceof Date) return product.stockOutAt.getTime();
-  if (typeof product.stockOutAt === "number") return product.stockOutAt;
+successOkButton.addEventListener("click", () => {
+  orderSuccess.hidden = true;
+  orderSuccess.setAttribute("aria-hidden", "true");
+  resetCartAndForm();
+  showCheckoutStep();
+  setDrawer(false);
+  $("#bagButton").focus();
+});
+
+function timestampMillis(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
   return null;
 }
 
+function stockOutTimestamp(product) {
+  return timestampMillis(product.stockOutAt);
+}
+
+function stockOutExpiry(product) {
+  const deleteAt = timestampMillis(product.deleteAt);
+  if (deleteAt) return deleteAt;
+  const stockOutAt = stockOutTimestamp(product);
+  return stockOutAt ? stockOutAt + STOCK_OUT_GRACE_MS : null;
+}
+
 async function removeStockOutProduct(product) {
-  if (typeof product.id === "string") {
-    await window.firebaseReady;
-    await firebase.firestore().collection("products").doc(product.id).delete();
+  if (typeof product.id !== "string") return;
+  await window.firebaseReady;
+  const firestore = firebase.firestore();
+  const productRef = firestore.collection("products").doc(product.id);
+  const shouldRemove = await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(productRef);
+    if (!snapshot.exists) return true;
+    const currentProduct = snapshot.data() || {};
+    const expiresAt = stockOutExpiry(currentProduct);
+    if (!isStockOut(currentProduct) || !expiresAt || expiresAt > Date.now())
+      return false;
+    transaction.delete(productRef);
+    return true;
+  });
+  if (!shouldRemove) return;
+
+  if (stockOutCleanupTimers.has(product.id)) {
+    clearTimeout(stockOutCleanupTimers.get(product.id));
+    stockOutCleanupTimers.delete(product.id);
   }
   products = products.filter((item) => item.id !== product.id);
   delete cart[product.id];
@@ -570,30 +605,42 @@ async function removeStockOutProduct(product) {
 function scheduleStockOutCleanup(product) {
   if (!isStockOut(product) || typeof product.id !== "string") return;
   const stockOutAt = stockOutTimestamp(product);
-  const startedAt = stockOutAt || Date.now();
-  if (!stockOutAt) {
+  const expiresAt =
+    stockOutExpiry(product) || Date.now() + STOCK_OUT_GRACE_MS;
+  if (!stockOutAt || !timestampMillis(product.deleteAt)) {
+    const update = {
+      deleteAt: firebase.firestore.Timestamp.fromMillis(expiresAt),
+    };
+    if (!stockOutAt) {
+      update.stockOutAt = firebase.firestore.FieldValue.serverTimestamp();
+      product.stockOutAt = new Date();
+    }
+    product.deleteAt = new Date(expiresAt);
     firebase
       .firestore()
       .collection("products")
       .doc(product.id)
-      .update({ stockOutAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .update(update)
       .catch((error) =>
-        console.error("Could not start stock-out timer:", error),
+        console.error("Could not save stock-out expiry:", error),
       );
   }
-  const remaining = Math.max(0, startedAt + STOCK_OUT_GRACE_MS - Date.now());
+  if (stockOutCleanupTimers.has(product.id))
+    clearTimeout(stockOutCleanupTimers.get(product.id));
+  const remaining = Math.max(0, expiresAt - Date.now());
   if (remaining === 0)
     removeStockOutProduct(product).catch((error) =>
       console.error("Could not remove stock-out product:", error),
     );
-  else
-    setTimeout(
-      () =>
-        removeStockOutProduct(product).catch((error) =>
-          console.error("Could not remove stock-out product:", error),
-        ),
-      remaining,
-    );
+  else {
+    const timer = setTimeout(() => {
+      stockOutCleanupTimers.delete(product.id);
+      removeStockOutProduct(product).catch((error) =>
+        console.error("Could not remove stock-out product:", error),
+      );
+    }, remaining);
+    stockOutCleanupTimers.set(product.id, timer);
+  }
 }
 
 async function decreasePurchasedStock(details) {
@@ -614,8 +661,16 @@ async function decreasePurchasedStock(details) {
           transaction.update(productRef, {
             stock: nextStock,
             ...(nextStock <= 0
-              ? { stockOutAt: firebase.firestore.FieldValue.serverTimestamp() }
-              : {}),
+              ? {
+                  stockOutAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  deleteAt: firebase.firestore.Timestamp.fromMillis(
+                    Date.now() + STOCK_OUT_GRACE_MS,
+                  ),
+                }
+              : {
+                  stockOutAt: firebase.firestore.FieldValue.delete(),
+                  deleteAt: firebase.firestore.FieldValue.delete(),
+                }),
           });
         });
       }),
@@ -625,6 +680,7 @@ async function decreasePurchasedStock(details) {
       product.stock = Math.max(0, Number(product.stock) - quantity);
       if (product.stock === 0) {
         product.stockOutAt = new Date();
+        product.deleteAt = new Date(Date.now() + STOCK_OUT_GRACE_MS);
         scheduleStockOutCleanup(product);
       }
     }
@@ -677,15 +733,9 @@ submitPaymentButton.addEventListener("click", async () => {
 
     const message =
       selectedPaymentMethod === "cod"
-        ? "ပစ္စည်းရောက်ရှိချိန်တွင် ငွေချေပေးပါ။"
-        : "စီမံခန့်ခွဲသူမှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။";
+        ? "Please pay when your order arrives."
+        : "Please wait for the administrator to approve.";
     showOrderSuccess(message);
-
-    setTimeout(() => {
-      resetCartAndForm();
-      showCheckoutStep();
-      setDrawer(false);
-    }, 2200);
   } catch (err) {
     console.error(err);
     notify(
@@ -1338,13 +1388,29 @@ productUploadForm.addEventListener("submit", async (event) => {
       detailMediaUrls,
       badge: "အသစ်",
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      ...(product.stock <= 0
+        ? {
+            stockOutAt: firebase.firestore.FieldValue.serverTimestamp(),
+            deleteAt: firebase.firestore.Timestamp.fromMillis(
+              Date.now() + STOCK_OUT_GRACE_MS,
+            ),
+          }
+        : {}),
     };
     await firebase
       .firestore()
       .collection("products")
       .doc(productId)
       .set(savedProduct);
-    const newProduct = { ...savedProduct };
+    const newProduct = {
+      ...savedProduct,
+      ...(product.stock <= 0
+        ? {
+            stockOutAt: new Date(),
+            deleteAt: new Date(Date.now() + STOCK_OUT_GRACE_MS),
+          }
+        : {}),
+    };
     products.unshift(newProduct);
     scheduleStockOutCleanup(newProduct);
     renderProducts();
