@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="my">
   <head>
     <meta charset="UTF-8" />
@@ -9,11 +8,16 @@
     />
     <meta name="theme-color" content="#f6f2ec" />
     <title>SoneYay Fashion Studio | ရွေးချယ်ထားသော ဖက်ရှင်များ</title>
+    <link rel="icon" type="image/jpeg" href="./logo.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Noto+Serif+Myanmar:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     />
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -280,6 +284,44 @@
                 aria-label="ရွေးချယ်စရာအားလုံး၏ စုစုပေါင်းလက်ကျန်"
             /></label>
           </div>
+          <section class="discount-settings" aria-labelledby="discountTitle">
+            <label class="discount-toggle" for="discountEnabled">
+              <span class="discount-toggle-copy">
+                <strong id="discountTitle">Discount</strong>
+                <small>ဤပစ္စည်းအတွက် Promotion ဖော်ပြရန်</small>
+              </span>
+              <input id="discountEnabled" type="checkbox" />
+              <span class="discount-switch" aria-hidden="true"></span>
+            </label>
+            <div class="discount-fields" id="discountFields" hidden>
+              <label
+                >Promotion name
+                <input
+                  id="promotionName"
+                  type="text"
+                  placeholder="Thadingyut Discount"
+                  autocomplete="off"
+                />
+              </label>
+              <label
+                >Discount percent (%)
+                <input
+                  id="promotionPercent"
+                  type="number"
+                  min="1"
+                  max="99"
+                  step="1"
+                  placeholder="50"
+                  inputmode="numeric"
+                />
+              </label>
+              <label
+                >Promotion Period
+                <span class="discount-date-label">Expiry Date</span>
+                <input id="promotionExpiry" type="date" />
+              </label>
+            </div>
+          </section>
           <label
             class="product-media-dropzone"
             id="productMediaDropzone"
@@ -622,6 +664,7 @@
           <h2 id="detailProductName"></h2>
           <strong class="detail-price" id="detailProductPrice"></strong>
           <p class="detail-stock" id="detailProductStock"></p>
+          <p class="detail-promotion" id="detailPromotion" hidden></p>
           <p class="detail-description" id="detailProductDescription"></p>
           <div class="detail-choices" id="detailChoices"></div>
           <button class="detail-add-button" id="detailAddButton" type="button">
@@ -649,6 +692,7 @@
           <div>
             <h3 class="product-name"></h3>
             <p class="product-meta"></p>
+            <p class="product-promotion-name" hidden></p>
             <p class="product-stock"></p>
           </div>
           <strong class="product-price"></strong>
@@ -684,6 +728,10 @@
         measurementId: "G-1040H54Y9P",
       };
       firebase.initializeApp(firebaseConfig);
+      firebase.firestore().settings(
+        { experimentalAutoDetectLongPolling: true },
+        { merge: true },
+      );
       window.firebaseReady = firebase.auth().currentUser
         ? Promise.resolve()
         : firebase.auth().signInAnonymously();
