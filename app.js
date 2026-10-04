@@ -1,5 +1,4 @@
 let products = [];
-
 const categories = [
   "ခေတ်စား",
   "အထူးစျေးနှုန်း",
@@ -42,6 +41,35 @@ const loadingScreen = $("#loadingScreen"),
 const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
 const STOCK_OUT_GRACE_MS = 4 * 60 * 60 * 1000;
 const stockOutCleanupTimers = new Map();
+
+function promotionDetails(product) {
+  const promotion = product.promotion;
+  if (!promotion || typeof promotion.name !== "string" || !promotion.name.trim())
+    return null;
+  const percent = Number(promotion.percent);
+  if (!Number.isInteger(percent) || percent < 1 || percent > 99) return null;
+  const rawExpiry = promotion.expiresAt;
+  const expiresAt =
+    rawExpiry && typeof rawExpiry.toDate === "function"
+      ? rawExpiry.toDate()
+      : rawExpiry instanceof Date
+        ? rawExpiry
+        : new Date(rawExpiry);
+  if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now())
+    return null;
+  return { name: promotion.name.trim(), percent, expiresAt };
+}
+
+function productPrice(product, promotion = promotionDetails(product)) {
+  return promotion
+    ? Math.round((Number(product.price) * (100 - promotion.percent)) / 100)
+    : Number(product.price);
+}
+
+function priceBreakdownMarkup(originalPrice, discountedPrice) {
+  return `<span class="price-line original-price"><span class="price-label">မူရင်းစျေး</span><span class="price-value">${money(originalPrice)}</span></span><span class="price-line discounted-price"><span class="price-label">လျှော့စျေး</span><span class="price-value">${money(discountedPrice)}</span></span>`;
+}
+
 function showLoading(message) {
   loadingMessage.textContent = message;
   loadingScreen.classList.remove("is-hidden");
@@ -103,13 +131,17 @@ function visibleProducts() {
           .toLowerCase()
           .includes(searchTerm.toLowerCase()),
     )
-    .sort((first, second) =>
-      sortSelect.value === "price-low"
-        ? first.price - second.price
-        : sortSelect.value === "price-high"
-          ? second.price - first.price
-          : 0,
-    );
+    .sort((first, second) => {
+      const firstHasPromotion = promotionDetails(first) !== null;
+      const secondHasPromotion = promotionDetails(second) !== null;
+      if (firstHasPromotion !== secondHasPromotion)
+        return firstHasPromotion ? -1 : 1;
+      if (sortSelect.value === "price-low")
+        return productPrice(first) - productPrice(second);
+      if (sortSelect.value === "price-high")
+        return productPrice(second) - productPrice(first);
+      return 0;
+    });
 }
 function renderProducts() {
   const items = visibleProducts();
@@ -133,16 +165,49 @@ function renderProducts() {
     }
     card.querySelector(".product-name").textContent = product.name;
     card.querySelector(".product-meta").textContent = product.meta;
-    card.querySelector(".product-price").textContent = money(product.price);
+    const promotion = promotionDetails(product);
+    const productCard = card.querySelector(".product-card");
+    productCard.classList.toggle("is-discounted", Boolean(promotion));
+    const promotionName = card.querySelector(".product-promotion-name");
+    promotionName.hidden = !promotion;
+    if (promotion) {
+      promotionName.innerHTML =
+        '<i class="fa-solid fa-tag" aria-hidden="true"></i>';
+      promotionName.append(document.createTextNode(promotion.name));
+    }
+    const productPriceElement = card.querySelector(".product-price");
+    const discountedPrice = productPrice(product, promotion);
+    if (promotion) {
+      card.querySelector(".product-details").classList.add("has-discount");
+      productPriceElement.classList.add("has-discount");
+      productPriceElement.innerHTML = priceBreakdownMarkup(
+        product.price,
+        discountedPrice,
+      );
+    } else {
+      card.querySelector(".product-details").classList.remove("has-discount");
+      productPriceElement.classList.remove("has-discount");
+      productPriceElement.textContent = money(product.price);
+    }
     card.querySelector(".product-stock").textContent = Number.isFinite(
       Number(product.stock),
     )
       ? `လက်ကျန်: ${Math.max(0, Number(product.stock) - quantity)}`
       : "";
     const badge = card.querySelector(".product-badge");
-    if (product.badge) {
+    if (promotion) {
       badge.hidden = false;
+      badge.classList.add("discount-tag");
+      badge.innerHTML = `<i class="fa-solid fa-tag" aria-hidden="true"></i><span>-${promotion.percent}%</span>`;
+      badge.setAttribute(
+        "aria-label",
+        `${promotion.name}: ${promotion.percent}% လျှော့စျေး`,
+      );
+    } else if (product.badge) {
+      badge.hidden = false;
+      badge.classList.remove("discount-tag");
       badge.textContent = product.badge;
+      badge.removeAttribute("aria-label");
     }
     const count = card.querySelector(".product-count");
     count.hidden = quantity === 0;
@@ -254,7 +319,7 @@ function renderCart() {
   const details = cartDetails(),
     itemCount = details.reduce((sum, item) => sum + item.quantity, 0),
     total = details.reduce(
-      (sum, item) => sum + item.product.price * item.quantity,
+      (sum, item) => sum + productPrice(item.product) * item.quantity,
       0,
     );
   $("#bagCount").textContent = String(itemCount);
@@ -266,8 +331,14 @@ function renderCart() {
   drawerItems.innerHTML = details.length
     ? details
         .map(
-          ({ product, quantity }) =>
-            `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${money(product.price)}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`,
+          ({ product, quantity }) => {
+            const promotion = promotionDetails(product);
+            const currentPrice = productPrice(product, promotion);
+            const priceMarkup = promotion
+              ? priceBreakdownMarkup(product.price, currentPrice)
+              : money(currentPrice);
+            return `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${priceMarkup}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`;
+          },
         )
         .join("")
     : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
@@ -477,14 +548,25 @@ dropzone.addEventListener("keydown", (event) => {
 function buildOrder() {
   return {
     type: "order",
-    items: cartDetails().map(({ product, quantity }) => ({
-      name: product.name,
-      meta: product.meta,
-      quantity,
-      price: product.price,
-    })),
+    items: cartDetails().map(({ product, quantity }) => {
+      const promotion = promotionDetails(product);
+      return {
+        name: product.name,
+        meta: product.meta,
+        quantity,
+        price: productPrice(product, promotion),
+        ...(promotion
+          ? {
+              originalPrice: Number(product.price),
+              discountPercent: promotion.percent,
+              promotionName: promotion.name,
+            }
+          : {}),
+      };
+    }),
     total: cartDetails().reduce(
-      (sum, { product, quantity }) => sum + product.price * quantity,
+      (sum, { product, quantity }) =>
+        sum + productPrice(product) * quantity,
       0,
     ),
     payment: paymentCodes[selectedPaymentMethod],
@@ -807,6 +889,11 @@ const deleteConfirmList = $("#deleteConfirmList");
 const cancelProductDelete = $("#cancelProductDelete");
 const confirmProductDelete = $("#confirmProductDelete");
 const productUploadForm = $("#productUploadForm");
+const discountEnabled = $("#discountEnabled");
+const discountFields = $("#discountFields");
+const promotionNameInput = $("#promotionName");
+const promotionPercentInput = $("#promotionPercent");
+const promotionExpiryInput = $("#promotionExpiry");
 const uploadProductButton = productUploadForm.querySelector(
   ".upload-product-button",
 );
@@ -816,6 +903,7 @@ const detailProductCategory = $("#detailProductCategory");
 const detailProductName = $("#detailProductName");
 const detailProductPrice = $("#detailProductPrice");
 const detailProductDescription = $("#detailProductDescription");
+const detailPromotion = $("#detailPromotion");
 const detailChoices = $("#detailChoices");
 const detailAddButton = $("#detailAddButton");
 const thumbnailDropzone = $("#thumbnailDropzone");
@@ -1055,7 +1143,13 @@ function openProductDetail(product) {
   activeDetailProduct = product;
   detailProductCategory.textContent = product.category || "ပစ္စည်း";
   detailProductName.textContent = product.name;
-  detailProductPrice.textContent = money(product.price);
+  const promotion = promotionDetails(product);
+  const discountedPrice = productPrice(product, promotion);
+  detailProductPrice.classList.toggle("has-discount", Boolean(promotion));
+  detailProductPrice.innerHTML = promotion
+    ? priceBreakdownMarkup(product.price, discountedPrice)
+    : "";
+  if (!promotion) detailProductPrice.textContent = money(product.price);
   const stockOut =
     !hasStock(product) || Number(product.stock) <= (cart[product.id] || 0);
   detailProductStock.textContent = stockOut
@@ -1068,6 +1162,10 @@ function openProductDetail(product) {
     ? "လက်ကျန်မရှိပါ"
     : "အိတ်ထဲထည့်ရန် <span>+</span>";
   detailProductDescription.textContent = product.meta || "";
+  detailPromotion.hidden = !promotion;
+  detailPromotion.textContent = promotion
+    ? `${promotion.name} · ${promotion.percent}% လျှော့စျေး · သက်တမ်းကုန်မည့်ရက် ${promotion.expiresAt.toLocaleDateString("en-GB")}`
+    : "";
   const choices = normalizeChoiceItems(product.choices);
   detailChoices.innerHTML = choices
     .map((choice, index) => {
@@ -1129,6 +1227,25 @@ function setProductMedia(files) {
   uploadFeedback.textContent = "";
   renderSelectedMedia();
 }
+
+function localDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function syncDiscountFields() {
+  const enabled = discountEnabled.checked;
+  discountFields.hidden = !enabled;
+  promotionNameInput.required = enabled;
+  promotionPercentInput.required = enabled;
+  promotionExpiryInput.required = enabled;
+}
+
+promotionExpiryInput.min = localDateInputValue(new Date());
+discountEnabled.addEventListener("change", syncDiscountFields);
+syncDiscountFields();
 
 controlPanelTab.addEventListener("click", () => {
   if (adminUnlocked) showControlPanel();
@@ -1336,6 +1453,41 @@ productUploadForm.addEventListener("submit", async (event) => {
       "စုစုပေါင်းလက်ကျန်တွက်ရန် အနည်းဆုံးရွေးချယ်စရာတစ်ခု ထည့်ပါ။";
     return;
   }
+  let promotion = null;
+  if (discountEnabled.checked) {
+    const promotionName = promotionNameInput.value.trim();
+    const percent = Number(promotionPercentInput.value);
+    const expiryParts = promotionExpiryInput.value.split("-").map(Number);
+    const expiresAt = new Date(
+      expiryParts[0],
+      expiryParts[1] - 1,
+      expiryParts[2],
+      23,
+      59,
+      59,
+      999,
+    );
+    if (
+      !promotionName ||
+      !promotionExpiryInput.value ||
+      !promotionPercentInput.value
+    ) {
+      uploadFeedback.textContent =
+        "Promotion name၊ Discount percent နှင့် Expiry Date အားလုံးဖြည့်ပါ။";
+      return;
+    }
+    if (!Number.isInteger(percent) || percent < 1 || percent > 99) {
+      uploadFeedback.textContent =
+        "Discount percent ကို ၁ မှ ၉၉ အတွင်းရှိ ကိန်းပြည့်အဖြစ် ထည့်ပါ။";
+      return;
+    }
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+      uploadFeedback.textContent =
+        "Promotion Expiry Date သည် ယနေ့ သို့မဟုတ် အနာဂတ်ရက် ဖြစ်ရပါမည်။";
+      return;
+    }
+    promotion = { name: promotionName, percent, expiresAt };
+  }
   const productId = firebase.firestore().collection("products").doc().id;
   const product = {
     id: productId,
@@ -1345,6 +1497,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     price: Number($("#itemPrice").value),
     stock: choices.reduce((total, choice) => total + choice.stock, 0),
     choices,
+    ...(promotion ? { promotion } : {}),
   };
   uploadProductButton.disabled = true;
   uploadProductButton.textContent = "တင်နေသည်...";
@@ -1387,7 +1540,18 @@ productUploadForm.addEventListener("submit", async (event) => {
       image: dataUrls[0],
       mediaType: "image",
       detailMediaUrls,
-      badge: "အသစ်",
+      badge: promotion ? "" : "အသစ်",
+      ...(promotion
+        ? {
+            promotion: {
+              name: promotion.name,
+              percent: promotion.percent,
+              expiresAt: firebase.firestore.Timestamp.fromDate(
+                promotion.expiresAt,
+              ),
+            },
+          }
+        : {}),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       ...(product.stock <= 0
         ? {
@@ -1418,6 +1582,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     renderProductDeleteOptions();
     uploadFeedback.textContent = "ပစ္စည်းတင်ပြီးပါပြီ။";
     productUploadForm.reset();
+    syncDiscountFields();
     $("#itemStocks").value = "0";
     selectedProductMedia = [];
     clearThumbnail();
