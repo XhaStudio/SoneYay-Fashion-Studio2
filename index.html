@@ -81,6 +81,17 @@
         </div>
       </section>
 
+      <section class="catalog-search" aria-label="ပစ္စည်းရှာရန်">
+        <label class="search-field" id="searchField"
+          ><span aria-hidden="true">⌕</span
+          ><input
+            id="searchInput"
+            type="search"
+            placeholder="ပစ္စည်းအမည်၊ အမျိုးအစားဖြင့် ရှာရန်"
+            aria-label="ပစ္စည်းရှာရန်"
+        /></label>
+      </section>
+
       <section
         class="shop-toolbar"
         aria-label="ပစ္စည်းစာရင်း ထိန်းချုပ်မှုများ"
@@ -103,14 +114,6 @@
           />
         </div>
         <div class="toolbar-right">
-          <label class="search-field" id="searchField"
-            ><span>⌕</span
-            ><input
-              id="searchInput"
-              type="search"
-              placeholder="ပစ္စည်းရှာရန်"
-              aria-label="ပစ္စည်းရှာရန်"
-          /></label>
           <label class="sort-field"
             >စီရန်
             <select id="sortSelect" aria-label="ပစ္စည်းများစီရန်">
@@ -511,15 +514,6 @@
             </button>
           </div>
 
-          <div class="order-success" id="orderSuccess" hidden>
-            <div class="success-check">
-              <span id="successCheckmark">✓</span>
-            </div>
-            <p class="success-title">မှာယူမှု ပို့ပြီးပါပြီ!</p>
-            <p class="success-sub" id="successSub">
-              စီမံခန့်ခွဲသူမှ အတည်ပြုပေးမည်ကို ခဏစောင့်ပေးပါ။
-            </p>
-          </div>
         </div>
       </div>
     </aside>
@@ -532,6 +526,28 @@
         ><span class="cart-total" id="cartTotal">$0</span>
       </div>
       <button id="viewBag">အိတ်ကြည့်ရန် <span>→</span></button>
+    </div>
+
+    <div
+      class="order-success-backdrop"
+      id="orderSuccess"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="successTitle"
+      aria-describedby="successSub"
+      aria-hidden="true"
+      hidden
+    >
+      <section class="order-success-notice">
+        <div class="success-check" aria-hidden="true">✓</div>
+        <h2 class="success-title" id="successTitle">Order has been shipped!</h2>
+        <p class="success-sub" id="successSub">
+          Please wait for the administrator to approve.
+        </p>
+        <button class="success-ok-button" id="successOkButton" type="button">
+          OK
+        </button>
+      </section>
     </div>
 
     <div class="admin-dialog-backdrop" id="adminDialogBackdrop" hidden>
