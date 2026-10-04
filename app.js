@@ -1,4 +1,5 @@
 let products = [];
+
 const categories = [
   "ခေတ်စား",
   "အထူးစျေးနှုန်း",
