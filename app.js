@@ -357,11 +357,6 @@ async function updateQuantity(id, change, choice = "") {
     notify("လက်ကျန်ကို ခဏတာ စစ်ဆေး၍မရပါ။ မှာယူချိန်တွင် ထပ်စစ်ဆေးပေးပါမည်။");
   }
 }
-function itemMeta(product, choice) {
-  return [choice ? `အရောင်/ရွေးချယ်မှု: ${choice}` : "", product.meta]
-    .filter(Boolean)
-    .join(" · ");
-}
 function cartDetails() {
   return Object.keys(cart)
     .map((key) => {
@@ -458,7 +453,12 @@ const paymentAccounts = {
   kbzpay: { label: "KBZPay", number: "09-750 123 456" },
   wavemoney: { label: "WaveMoney", number: "09-961 234 567" },
 };
-const paymentCodes = { kbzpay: "KBZPay", wavemoney: "WavePay", cod: "COD" };
+const paymentCodes = {
+  kbzpay: "KBZPay",
+  wavemoney: "WavePay",
+  mmqr: "MMQR",
+  cod: "COD",
+};
 let selectedPaymentMethod = "kbzpay";
 let selectedScreenshot = null;
 
@@ -474,6 +474,7 @@ const paymentAccount = $("#paymentAccount"),
   paymentAccountName = $("#paymentAccountName"),
   paymentAccountNumber = $("#paymentAccountNumber"),
   copyAccountButton = $("#copyAccountButton");
+const paymentQr = $("#paymentQr");
 const codNote = $("#codNote");
 const dropzone = $("#dropzone"),
   dropzoneEmpty = $("#dropzoneEmpty"),
@@ -499,9 +500,11 @@ function showPaymentStep() {
 function setPaymentMethod(method) {
   selectedPaymentMethod = method;
   const isCod = method === "cod";
+  const isMmqr = method === "mmqr";
 
-  // COD needs no wallet transfer and no payment-proof screenshot.
-  paymentAccount.hidden = isCod;
+  // COD needs no payment proof; MMQR uses the displayed QR instead of account details.
+  paymentAccount.hidden = isCod || isMmqr;
+  paymentQr.hidden = !isMmqr;
   dropzone.hidden = isCod;
   codNote.hidden = !isCod;
   submitPaymentButton.textContent = isCod
@@ -509,7 +512,7 @@ function setPaymentMethod(method) {
     : "ငွေလွှဲပြေစာ ပို့ရန်";
   submitPaymentButton.disabled = isCod ? false : !selectedScreenshot;
 
-  if (!isCod) {
+  if (!isCod && !isMmqr) {
     const account = paymentAccounts[method];
     paymentAccountName.textContent = account.label;
     paymentAccountNumber.textContent = account.number;
@@ -611,7 +614,7 @@ function buildOrder() {
       const promotion = promotionDetails(product);
       return {
         name: product.name,
-        meta: itemMeta(product, choice),
+        meta: product.meta || "",
         choice,
         quantity,
         price: productPrice(product, promotion),
@@ -987,6 +990,7 @@ const detailProductPrice = $("#detailProductPrice");
 const detailProductDescription = $("#detailProductDescription");
 const detailPromotion = $("#detailPromotion");
 const detailChoices = $("#detailChoices");
+const detailChoiceHint = $("#detailChoiceHint");
 const detailAddButton = $("#detailAddButton");
 const thumbnailDropzone = $("#thumbnailDropzone");
 const thumbnailInput = $("#thumbnailInput");
@@ -1221,7 +1225,7 @@ function updateTotalStock() {
   $("#itemStocks").value = String(total);
 }
 
-function openProductDetail(product, selectedChoice = "") {
+function openProductDetail(product) {
   activeDetailProduct = product;
   detailProductCategory.textContent = product.category || "ပစ္စည်း";
   detailProductName.textContent = product.name;
@@ -1249,27 +1253,16 @@ function openProductDetail(product, selectedChoice = "") {
     ? `${promotion.name} · ${promotion.percent}% လျှော့စျေး · သက်တမ်းကုန်မည့်ရက် ${promotion.expiresAt.toLocaleDateString("en-GB")}`
     : "";
   const choices = normalizeChoiceItems(product.choices);
-  const firstAvailable = choices.findIndex(
-    (choice) =>
-      Number(choice.stock || 0) - (cart[cartKey(product.id, choice.label)] || 0) >
-      0,
-  );
-  const preferredIndex = choices.findIndex(
-    (choice) =>
-      choice.label === selectedChoice &&
-      Number(choice.stock || 0) - (cart[cartKey(product.id, choice.label)] || 0) >
-        0,
-  );
-  const checkedIndex = preferredIndex !== -1 ? preferredIndex : firstAvailable;
+  detailChoiceHint.hidden = choices.length === 0;
   detailChoices.innerHTML = choices
-    .map((choice, index) => {
+    .map((choice) => {
       const stock = Math.max(
         0,
         (Number.isFinite(Number(choice.stock)) ? Number(choice.stock) : 0) -
           (cart[cartKey(product.id, choice.label)] || 0),
       );
       const stockText = stock > 0 ? `လက်ကျန် ${stock}` : "လက်ကျန်မရှိ";
-      return `<label class="${stock <= 0 ? "is-out" : ""}"><input type="radio" name="detail-choice" value="${choice.label}" ${index === checkedIndex ? "checked" : ""} ${stock <= 0 ? "disabled" : ""} /> <span>${choice.label}</span><small>(${stockText})</small></label>`;
+      return `<label class="${stock <= 0 ? "is-out" : ""}"><input type="checkbox" name="detail-choice" value="${choice.label}" ${stock <= 0 ? "disabled" : ""} /> <span>${choice.label}</span><small>(${stockText})</small></label>`;
     })
     .join("");
   const galleryItems = [];
@@ -1704,17 +1697,24 @@ productDetailBackdrop.addEventListener("click", (event) => {
 });
 detailAddButton.addEventListener("click", async () => {
   if (!activeDetailProduct) return;
-  const picked = detailChoices.querySelector(
-    'input[name="detail-choice"]:checked',
-  );
-  if (hasChoices(activeDetailProduct) && !picked) {
+  const product = activeDetailProduct;
+  const choices = Array.from(
+    detailChoices.querySelectorAll('input[name="detail-choice"]:checked'),
+  ).map((input) => input.value);
+  if (hasChoices(product) && choices.length === 0) {
     notify("အရောင်/ရွေးချယ်မှု ကို အရင်ရွေးပါ။");
     return;
   }
-  const choice = picked ? picked.value : "";
-  await updateQuantity(activeDetailProduct.id, 1, choice);
-  if (activeDetailProduct) openProductDetail(activeDetailProduct, choice);
-  closeProductDetail();
+  if (choices.length === 0) choices.push("");
+  detailAddButton.disabled = true;
+  try {
+    for (const choice of choices) await updateQuantity(product.id, 1, choice);
+    if (activeDetailProduct === product) closeProductDetail();
+  } finally {
+    if (activeDetailProduct === product)
+      detailAddButton.disabled =
+        !hasStock(product) || Number(product.stock) <= productCartQty(product.id);
+  }
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !productDetailBackdrop.hidden)
