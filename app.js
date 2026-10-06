@@ -25,6 +25,37 @@ const categories = [
 let activeCategory = null,
   searchTerm = "",
   cart = {};
+const CART_SEP = "::";
+function cartKey(id, choice) {
+  return choice ? `${id}${CART_SEP}${choice}` : String(id);
+}
+function parseCartKey(key) {
+  const index = key.indexOf(CART_SEP);
+  return index === -1
+    ? { id: key, choice: "" }
+    : { id: key.slice(0, index), choice: key.slice(index + CART_SEP.length) };
+}
+function cartKeysFor(id) {
+  return Object.keys(cart).filter((key) => parseCartKey(key).id === String(id));
+}
+function productCartQty(id) {
+  return cartKeysFor(id).reduce((sum, key) => sum + cart[key], 0);
+}
+function removeProductFromCart(id) {
+  cartKeysFor(id).forEach((key) => delete cart[key]);
+}
+function hasChoices(product) {
+  return normalizeChoiceItems(product.choices).length > 0;
+}
+function choiceStockOf(product, label) {
+  if (!label) return Infinity;
+  const found = normalizeChoiceItems(product.choices).find(
+    (choice) => choice.label === label,
+  );
+  if (!found) return Infinity;
+  const stock = Number(found.stock);
+  return Number.isFinite(stock) ? Math.max(0, stock) : Infinity;
+}
 const $ = (selector) => document.querySelector(selector);
 const categoryTabs = $("#categoryTabs"),
   categorySlider = $("#categorySlider"),
@@ -149,7 +180,7 @@ function renderProducts() {
   emptyState.hidden = items.length > 0;
   items.forEach((product) => {
     const card = template.content.cloneNode(true),
-      quantity = cart[product.id] || 0;
+      quantity = productCartQty(product.id);
     const image = card.querySelector(".product-image");
     const video = card.querySelector(".product-video");
     if (product.mediaType === "video" && product.image) {
@@ -230,18 +261,27 @@ function renderProducts() {
       if (event.target.closest("button")) return;
       openProductDetail(product);
     });
-    addButton.addEventListener("click", () => updateQuantity(product.id, 1));
-    card
-      .querySelector(".decrease")
-      .addEventListener("click", () => updateQuantity(product.id, -1));
-    card
-      .querySelector(".increase")
-      .addEventListener("click", () => updateQuantity(product.id, 1));
+    const addFromCard = () => {
+      if (hasChoices(product)) {
+        openProductDetail(product);
+        return;
+      }
+      updateQuantity(product.id, 1);
+    };
+    addButton.addEventListener("click", addFromCard);
+    card.querySelector(".decrease").addEventListener("click", () => {
+      const keys = cartKeysFor(product.id);
+      if (keys.length === 0) return;
+      const { choice } = parseCartKey(keys[keys.length - 1]);
+      updateQuantity(product.id, -1, choice);
+    });
+    card.querySelector(".increase").addEventListener("click", addFromCard);
     catalog.appendChild(card);
   });
 }
-async function updateQuantity(id, change) {
-  const product = products.find((item) => item.id === id);
+async function updateQuantity(id, change, choice = "") {
+  const key = cartKey(id, choice);
+  const product = products.find((item) => String(item.id) === String(id));
   if (!product) {
     if (change > 0) notify("လက်ကျန်မရှိပါ။");
     return;
@@ -249,10 +289,14 @@ async function updateQuantity(id, change) {
 
   // Respond to the tap immediately using what we already know locally —
   // don't make the button wait on a Firestore round-trip before the UI moves.
-  const previousQuantity = cart[id] || 0;
-  const localAvailableStock = Number.isFinite(Number(product.stock))
-    ? Math.max(0, Number(product.stock))
-    : Infinity;
+  const previousQuantity = cart[key] || 0;
+  const otherQuantity = productCartQty(product.id) - previousQuantity;
+  const localAvailableStock = Math.min(
+    Number.isFinite(Number(product.stock))
+      ? Math.max(0, Number(product.stock) - otherQuantity)
+      : Infinity,
+    choiceStockOf(product, choice),
+  );
   const requestedQuantity = Math.max(0, previousQuantity + change);
   if (change > 0 && requestedQuantity > localAvailableStock) {
     notify("ဒီပစ္စည်း၏ လက်ကျန်မလုံလောက်တော့ပါ။");
@@ -260,8 +304,8 @@ async function updateQuantity(id, change) {
     return;
   }
   const optimisticQuantity = Math.min(localAvailableStock, requestedQuantity);
-  if (optimisticQuantity === 0) delete cart[id];
-  else cart[id] = optimisticQuantity;
+  if (optimisticQuantity === 0) delete cart[key];
+  else cart[key] = optimisticQuantity;
   renderProducts();
   renderCart();
 
@@ -277,8 +321,8 @@ async function updateQuantity(id, change) {
       .get();
     if (!snapshot.exists) {
       notify("ဤပစ္စည်း မရှိတော့ပါ။");
-      if (previousQuantity === 0) delete cart[id];
-      else cart[id] = previousQuantity;
+      if (previousQuantity === 0) delete cart[key];
+      else cart[key] = previousQuantity;
       renderProducts();
       renderCart();
       return;
@@ -287,17 +331,20 @@ async function updateQuantity(id, change) {
     product.stock = Number.isFinite(currentStock)
       ? Math.max(0, currentStock)
       : null;
-    const liveAvailableStock = Number.isFinite(Number(product.stock))
-      ? Math.max(0, Number(product.stock))
-      : Infinity;
+    const liveAvailableStock = Math.min(
+      Number.isFinite(Number(product.stock))
+        ? Math.max(0, Number(product.stock) - otherQuantity)
+        : Infinity,
+      choiceStockOf(product, choice),
+    );
     if (!hasStock(product) || liveAvailableStock < optimisticQuantity) {
       notify("လက်ကျန်ပမာဏ ပြောင်းလဲသွားသဖြင့် ပမာဏကို ချိန်ညှိလိုက်ပါသည်။");
       const correctedQuantity = Math.min(
         liveAvailableStock,
         optimisticQuantity,
       );
-      if (correctedQuantity === 0) delete cart[id];
-      else cart[id] = correctedQuantity;
+      if (correctedQuantity === 0) delete cart[key];
+      else cart[key] = correctedQuantity;
       renderProducts();
       renderCart();
     } else {
@@ -310,10 +357,21 @@ async function updateQuantity(id, change) {
     notify("လက်ကျန်ကို ခဏတာ စစ်ဆေး၍မရပါ။ မှာယူချိန်တွင် ထပ်စစ်ဆေးပေးပါမည်။");
   }
 }
+function itemMeta(product, choice) {
+  return [choice ? `အရောင်/ရွေးချယ်မှု: ${choice}` : "", product.meta]
+    .filter(Boolean)
+    .join(" · ");
+}
 function cartDetails() {
-  return products
-    .filter((product) => cart[product.id])
-    .map((product) => ({ product, quantity: cart[product.id] }));
+  return Object.keys(cart)
+    .map((key) => {
+      const { id, choice } = parseCartKey(key);
+      const product = products.find((item) => String(item.id) === id);
+      return product
+        ? { product, choice, key, quantity: cart[key] }
+        : null;
+    })
+    .filter((line) => line && line.quantity > 0);
 }
 function renderCart() {
   const details = cartDetails(),
@@ -331,23 +389,24 @@ function renderCart() {
   drawerItems.innerHTML = details.length
     ? details
         .map(
-          ({ product, quantity }) => {
+          ({ product, choice, key, quantity }) => {
             const promotion = promotionDetails(product);
             const currentPrice = productPrice(product, promotion);
             const priceMarkup = promotion
               ? priceBreakdownMarkup(product.price, currentPrice)
               : money(currentPrice);
-            return `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3><p>${product.meta}</p><strong class="drawer-item-price">${priceMarkup}</strong></div><div class="mini-quantity"><button data-id="${product.id}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-id="${product.id}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`;
+            return `<div class="drawer-item"><img src="${product.image}" alt="${product.name}" /><div class="drawer-item-info"><h3>${product.name}</h3>${choice ? `<p><b>${choice}</b></p>` : ""}<p>${product.meta}</p><strong class="drawer-item-price">${priceMarkup}</strong></div><div class="mini-quantity"><button data-key="${key}" data-change="-1" aria-label="${product.name} တစ်ခုလျှော့ရန်">−</button><span>${quantity}</span><button data-key="${key}" data-change="1" aria-label="${product.name} တစ်ခုတိုးရန်">+</button></div></div>`;
           },
         )
         .join("")
     : `<p class="empty-state">သင့်အိတ်ထဲတွင် ပစ္စည်းမရှိသေးပါ။</p>`;
   drawerItems
-    .querySelectorAll("button[data-id]")
+    .querySelectorAll("button[data-key]")
     .forEach((button) =>
-      button.addEventListener("click", () =>
-        updateQuantity(button.dataset.id, Number(button.dataset.change)),
-      ),
+      button.addEventListener("click", () => {
+        const { id, choice } = parseCartKey(button.dataset.key);
+        updateQuantity(id, Number(button.dataset.change), choice);
+      }),
     );
 }
 function setDrawer(open) {
@@ -548,11 +607,12 @@ dropzone.addEventListener("keydown", (event) => {
 function buildOrder() {
   return {
     type: "order",
-    items: cartDetails().map(({ product, quantity }) => {
+    items: cartDetails().map(({ product, choice, quantity }) => {
       const promotion = promotionDetails(product);
       return {
         name: product.name,
-        meta: product.meta,
+        meta: itemMeta(product, choice),
+        choice,
         quantity,
         price: productPrice(product, promotion),
         ...(promotion
@@ -679,7 +739,7 @@ async function removeStockOutProduct(product) {
     stockOutCleanupTimers.delete(product.id);
   }
   products = products.filter((item) => item.id !== product.id);
-  delete cart[product.id];
+  removeProductFromCart(product.id);
   renderProducts();
   renderCart();
   renderProductDeleteOptions();
@@ -732,7 +792,7 @@ async function decreasePurchasedStock(details) {
   await Promise.all(
     details
       .filter(({ product }) => typeof product.id === "string")
-      .map(({ product, quantity }) => {
+      .map(({ product, choice, quantity }) => {
         const productRef = firestore.collection("products").doc(product.id);
         return firestore.runTransaction(async (transaction) => {
           const snapshot = await transaction.get(productRef);
@@ -741,7 +801,22 @@ async function decreasePurchasedStock(details) {
           if (!Number.isFinite(currentStock) || currentStock < quantity)
             throw new Error(`${product.name} stock is no longer available`);
           const nextStock = currentStock - quantity;
+          const storedChoices = snapshot.data().choices;
+          const choiceUpdate =
+            choice && Array.isArray(storedChoices)
+              ? {
+                  choices: storedChoices.map((item) =>
+                    item && typeof item === "object" && item.label === choice
+                      ? {
+                          ...item,
+                          stock: Math.max(0, Number(item.stock || 0) - quantity),
+                        }
+                      : item,
+                  ),
+                }
+              : {};
           transaction.update(productRef, {
+            ...choiceUpdate,
             stock: nextStock,
             ...(nextStock <= 0
               ? {
@@ -758,7 +833,14 @@ async function decreasePurchasedStock(details) {
         });
       }),
   );
-  details.forEach(({ product, quantity }) => {
+  details.forEach(({ product, choice, quantity }) => {
+    if (choice && Array.isArray(product.choices)) {
+      product.choices = product.choices.map((item) =>
+        item && typeof item === "object" && item.label === choice
+          ? { ...item, stock: Math.max(0, Number(item.stock || 0) - quantity) }
+          : item,
+      );
+    }
     if (Number.isFinite(Number(product.stock))) {
       product.stock = Math.max(0, Number(product.stock) - quantity);
       if (product.stock === 0) {
@@ -1139,7 +1221,7 @@ function updateTotalStock() {
   $("#itemStocks").value = String(total);
 }
 
-function openProductDetail(product) {
+function openProductDetail(product, selectedChoice = "") {
   activeDetailProduct = product;
   detailProductCategory.textContent = product.category || "ပစ္စည်း";
   detailProductName.textContent = product.name;
@@ -1151,11 +1233,11 @@ function openProductDetail(product) {
     : "";
   if (!promotion) detailProductPrice.textContent = money(product.price);
   const stockOut =
-    !hasStock(product) || Number(product.stock) <= (cart[product.id] || 0);
+    !hasStock(product) || Number(product.stock) <= productCartQty(product.id);
   detailProductStock.textContent = stockOut
     ? "လက်ကျန်မရှိပါ"
     : Number.isFinite(Number(product.stock))
-      ? `လက်ကျန်: ${Math.max(0, Number(product.stock) - (cart[product.id] || 0))}`
+      ? `လက်ကျန်: ${Math.max(0, Number(product.stock) - productCartQty(product.id))}`
       : "";
   detailAddButton.disabled = stockOut;
   detailAddButton.innerHTML = stockOut
@@ -1167,13 +1249,27 @@ function openProductDetail(product) {
     ? `${promotion.name} · ${promotion.percent}% လျှော့စျေး · သက်တမ်းကုန်မည့်ရက် ${promotion.expiresAt.toLocaleDateString("en-GB")}`
     : "";
   const choices = normalizeChoiceItems(product.choices);
+  const firstAvailable = choices.findIndex(
+    (choice) =>
+      Number(choice.stock || 0) - (cart[cartKey(product.id, choice.label)] || 0) >
+      0,
+  );
+  const preferredIndex = choices.findIndex(
+    (choice) =>
+      choice.label === selectedChoice &&
+      Number(choice.stock || 0) - (cart[cartKey(product.id, choice.label)] || 0) >
+        0,
+  );
+  const checkedIndex = preferredIndex !== -1 ? preferredIndex : firstAvailable;
   detailChoices.innerHTML = choices
     .map((choice, index) => {
-      const stock = Number.isFinite(Number(choice.stock))
-        ? Number(choice.stock)
-        : 0;
+      const stock = Math.max(
+        0,
+        (Number.isFinite(Number(choice.stock)) ? Number(choice.stock) : 0) -
+          (cart[cartKey(product.id, choice.label)] || 0),
+      );
       const stockText = stock > 0 ? `လက်ကျန် ${stock}` : "လက်ကျန်မရှိ";
-      return `<label class="${stock <= 0 ? "is-out" : ""}"><input type="radio" name="detail-choice" value="${choice.label}" ${index === 0 ? "checked" : ""} ${stock <= 0 ? "disabled" : ""} /> <span>${choice.label}</span><small>(${stockText})</small></label>`;
+      return `<label class="${stock <= 0 ? "is-out" : ""}"><input type="radio" name="detail-choice" value="${choice.label}" ${index === checkedIndex ? "checked" : ""} ${stock <= 0 ? "disabled" : ""} /> <span>${choice.label}</span><small>(${stockText})</small></label>`;
     })
     .join("");
   const galleryItems = [];
@@ -1392,7 +1488,7 @@ confirmProductDelete.addEventListener("click", async () => {
       }
     });
     products = products.filter((product) => !deletedIds.has(product.id));
-    deletedIds.forEach((id) => delete cart[id]);
+    deletedIds.forEach((id) => removeProductFromCart(id));
     renderProducts();
     renderCart();
     renderProductDeleteOptions();
@@ -1606,9 +1702,18 @@ $("#closeProductDetail").addEventListener("click", closeProductDetail);
 productDetailBackdrop.addEventListener("click", (event) => {
   if (event.target === productDetailBackdrop) closeProductDetail();
 });
-detailAddButton.addEventListener("click", () => {
+detailAddButton.addEventListener("click", async () => {
   if (!activeDetailProduct) return;
-  updateQuantity(activeDetailProduct.id, 1);
+  const picked = detailChoices.querySelector(
+    'input[name="detail-choice"]:checked',
+  );
+  if (hasChoices(activeDetailProduct) && !picked) {
+    notify("အရောင်/ရွေးချယ်မှု ကို အရင်ရွေးပါ။");
+    return;
+  }
+  const choice = picked ? picked.value : "";
+  await updateQuantity(activeDetailProduct.id, 1, choice);
+  if (activeDetailProduct) openProductDetail(activeDetailProduct, choice);
   closeProductDetail();
 });
 document.addEventListener("keydown", (event) => {
