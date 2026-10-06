@@ -485,12 +485,25 @@
               </button>
               <button
                 class="payment-method"
+                data-method="mmqr"
+                role="tab"
+                aria-selected="false"
+              >
+                MMQR
+              </button>
+              <button
+                class="payment-method"
                 data-method="cod"
                 role="tab"
                 aria-selected="false"
               >
                 အိမ်အရောက်ငွေချေ
               </button>
+            </div>
+
+            <div class="payment-qr" id="paymentQr" hidden>
+              <p>MMQR ဖြင့် scan ဖတ်ပြီး ငွေပေးချေပါ</p>
+              <img src="./MMQR.jpg" alt="MMQR payment QR code" />
             </div>
 
             <div class="payment-account" id="paymentAccount">
@@ -667,6 +680,10 @@
           <p class="detail-promotion" id="detailPromotion" hidden></p>
           <p class="detail-description" id="detailProductDescription"></p>
           <div class="detail-choices" id="detailChoices"></div>
+          <p class="detail-choice-hint" id="detailChoiceHint" hidden>
+            တစ်ခု သို့မဟုတ် တစ်ခုထက်ပိုသော ရွေးချယ်မှုများကို ရွေးပါ။ ရွေးထားသော
+            တစ်ခုစီကို ၁ ခုစီ အိတ်ထဲသို့ ထည့်ပေးပါမည်။
+          </p>
           <button class="detail-add-button" id="detailAddButton" type="button">
             အိတ်ထဲထည့်ရန် <span>+</span>
           </button>
