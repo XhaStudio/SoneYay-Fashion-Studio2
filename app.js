@@ -613,6 +613,7 @@ function buildOrder() {
     items: cartDetails().map(({ product, choice, quantity }) => {
       const promotion = promotionDetails(product);
       return {
+        productId: String(product.id),
         name: product.name,
         meta: product.meta || "",
         choice,
@@ -743,9 +744,11 @@ async function removeStockOutProduct(product) {
   }
   products = products.filter((item) => item.id !== product.id);
   removeProductFromCart(product.id);
+  if (activeEditingProduct?.id === product.id) discardProductEditor();
   renderProducts();
   renderCart();
   renderProductDeleteOptions();
+  renderProductEditList();
 }
 
 function scheduleStockOutCleanup(product) {
@@ -963,6 +966,27 @@ const productMediaInput = $("#productMedia");
 const selectedMedia = $("#selectedMedia");
 const uploadFeedback = $("#uploadFeedback");
 const showProductDelete = $("#showProductDelete");
+const showProductEdit = $("#showProductEdit");
+const productEditPanel = $("#productEditPanel");
+const productEditList = $("#productEditList");
+const productEditForm = $("#productEditForm");
+const editItemName = $("#editItemName");
+const editItemDescription = $("#editItemDescription");
+const editItemCategory = $("#editItemCategory");
+const editThumbnailBox = $("#editThumbnailBox");
+const editThumbnailInput = $("#editThumbnailInput");
+const editDetailMediaElement = $("#editDetailMedia");
+const editDetailPhotoInput = $("#editDetailPhotoInput");
+const editChoiceList = $("#editChoiceList");
+const addEditChoiceButton = $("#addEditChoiceButton");
+const editTotalStock = $("#editTotalStock");
+const editPromotionSection = $("#editPromotionSection");
+const editPromotionName = $("#editPromotionName");
+const editPromotionPercent = $("#editPromotionPercent");
+const editPromotionExpiry = $("#editPromotionExpiry");
+const productEditFeedback = $("#productEditFeedback");
+const saveProductEdit = $("#saveProductEdit");
+const discardProductEdit = $("#discardProductEdit");
 const productDeletePanel = $("#productDeletePanel");
 const productDeleteList = $("#productDeleteList");
 const selectAllProducts = $("#selectAllProducts");
@@ -1005,6 +1029,12 @@ let adminUnlocked = false;
 let selectedProductMedia = [];
 let selectedThumbnail = null;
 let activeDetailProduct = null;
+let activeEditingProduct = null;
+let activeEditThumbnailFile = null;
+let activeEditThumbnailPreviewUrl = null;
+let editDetailMedia = [];
+let editPreviewUrls = [];
+let pendingEditDetailIndex = -1;
 let pendingProductDeletes = [];
 
 function openAdminDialog() {
@@ -1021,6 +1051,7 @@ function closeAdminDialog() {
 function showControlPanel() {
   controlPanel.hidden = false;
   renderProductDeleteOptions();
+  renderProductEditList();
   controlPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1058,6 +1089,262 @@ function renderProductDeleteOptions() {
   syncProductDeleteSelection();
   productDeleteFeedback.textContent =
     deletableProducts.length === 0 ? "ဖျက်ရန်ပစ္စည်း မရှိပါ။" : "";
+}
+
+function revokeEditPreviewUrls() {
+  editPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  editPreviewUrls = [];
+  activeEditThumbnailPreviewUrl = null;
+  editDetailMedia.forEach((media) => {
+    media.previewUrl = null;
+  });
+}
+
+function editMediaPreviewUrl(media) {
+  if (media.file) {
+    if (!media.previewUrl) {
+      media.previewUrl = URL.createObjectURL(media.file);
+      editPreviewUrls.push(media.previewUrl);
+    }
+    return media.previewUrl;
+  }
+  return media.url || "";
+}
+
+function renderProductEditList() {
+  productEditList.replaceChildren();
+  if (products.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "product-edit-empty";
+    empty.textContent = "ပြင်ဆင်ရန် ပစ္စည်းမရှိပါ။";
+    productEditList.appendChild(empty);
+    return;
+  }
+
+  products.forEach((product) => {
+    const button = document.createElement("button");
+    button.className = "product-edit-item";
+    button.type = "button";
+    button.disabled = typeof product.id !== "string";
+    const name = document.createElement("strong");
+    name.textContent = product.name || "အမည်မရှိသောပစ္စည်း";
+    const details = document.createElement("small");
+    details.textContent = [product.category, money(Number(product.price) || 0)]
+      .filter(Boolean)
+      .join(" · ");
+    button.append(name, details);
+    button.addEventListener("click", () => openProductEditor(product));
+    productEditList.appendChild(button);
+  });
+}
+
+function renderEditThumbnail() {
+  if (activeEditThumbnailPreviewUrl) {
+    URL.revokeObjectURL(activeEditThumbnailPreviewUrl);
+    editPreviewUrls = editPreviewUrls.filter(
+      (url) => url !== activeEditThumbnailPreviewUrl,
+    );
+    activeEditThumbnailPreviewUrl = null;
+  }
+  editThumbnailBox.replaceChildren();
+  if (activeEditThumbnailFile) {
+    activeEditThumbnailPreviewUrl = URL.createObjectURL(
+      activeEditThumbnailFile,
+    );
+    editPreviewUrls.push(activeEditThumbnailPreviewUrl);
+    const image = document.createElement("img");
+    image.src = activeEditThumbnailPreviewUrl;
+    image.alt = "အဓိကပုံ အစမ်းကြည့်ရန်";
+    editThumbnailBox.appendChild(image);
+  } else if (activeEditingProduct && activeEditingProduct.image) {
+    const mediaType = activeEditingProduct.mediaType || "image/jpeg";
+    const preview =
+      mediaType === "video"
+        ? document.createElement("video")
+        : document.createElement("img");
+    preview.src = activeEditingProduct.image;
+    preview.alt = "အဓိကပုံ";
+    if (preview instanceof HTMLVideoElement) {
+      preview.controls = true;
+      preview.muted = true;
+      preview.playsInline = true;
+    }
+    editThumbnailBox.appendChild(preview);
+  } else {
+    const empty = document.createElement("span");
+    empty.textContent = "အဓိကပုံ မရှိပါ";
+    editThumbnailBox.appendChild(empty);
+  }
+
+  const replaceButton = document.createElement("button");
+  replaceButton.className = "edit-media-button";
+  replaceButton.type = "button";
+  replaceButton.textContent = "Replace";
+  replaceButton.addEventListener("click", () => editThumbnailInput.click());
+  editThumbnailBox.appendChild(replaceButton);
+}
+
+function renderEditDetailMedia() {
+  editDetailMediaElement.replaceChildren();
+  if (editDetailMedia.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "product-edit-empty";
+    empty.textContent = "Detail Photos မရှိပါ။";
+    editDetailMediaElement.appendChild(empty);
+    return;
+  }
+
+  editDetailMedia.forEach((media, index) => {
+    const item = document.createElement("div");
+    item.className = "edit-detail-media-item";
+    const image = document.createElement("img");
+    image.src = editMediaPreviewUrl(media);
+    image.alt = media.name || `Detail photo ${index + 1}`;
+    const name = document.createElement("small");
+    name.textContent = media.name || `Detail photo ${index + 1}`;
+    const actions = document.createElement("div");
+    actions.className = "edit-detail-media-actions";
+    const replaceButton = document.createElement("button");
+    replaceButton.className = "edit-media-button";
+    replaceButton.type = "button";
+    replaceButton.textContent = "Replace";
+    replaceButton.addEventListener("click", () => {
+      pendingEditDetailIndex = index;
+      editDetailPhotoInput.click();
+    });
+    const removeButton = document.createElement("button");
+    removeButton.className = "edit-media-button is-remove";
+    removeButton.type = "button";
+    removeButton.textContent = "Remove";
+    removeButton.addEventListener("click", () => {
+      editDetailMedia.splice(index, 1);
+      renderEditDetailMedia();
+    });
+    actions.append(replaceButton, removeButton);
+    item.append(image, name, actions);
+    editDetailMediaElement.appendChild(item);
+  });
+}
+
+function updateEditTotalStock() {
+  editTotalStock.textContent = String(
+    Array.from(editChoiceList.querySelectorAll(".choice-stock-input")).reduce(
+      (total, input) => total + Math.max(0, Number(input.value) || 0),
+      0,
+    ),
+  );
+}
+
+function addEditChoiceRow(choice = { label: "", stock: 0 }) {
+  const row = document.createElement("div");
+  row.className = "choice-row";
+  const fields = document.createElement("div");
+  fields.className = "choice-field-group";
+  const labelInput = document.createElement("input");
+  labelInput.className = "choice-input";
+  labelInput.type = "text";
+  labelInput.placeholder = "ပစ္စည်းအမည် သို့မဟုတ် အရောင်";
+  labelInput.value = choice.label;
+  labelInput.required = true;
+  const stockLabel = document.createElement("label");
+  stockLabel.className = "choice-stock-field";
+  const stockTitle = document.createElement("span");
+  stockTitle.textContent = "လက်ကျန်";
+  const stockInput = document.createElement("input");
+  stockInput.className = "choice-stock-input";
+  stockInput.type = "number";
+  stockInput.min = "0";
+  stockInput.step = "1";
+  stockInput.value =
+    choice.stock === null || choice.stock === undefined
+      ? "0"
+      : String(choice.stock);
+  stockInput.required = true;
+  stockInput.addEventListener("input", updateEditTotalStock);
+  stockLabel.append(stockTitle, stockInput);
+  fields.append(labelInput, stockLabel);
+
+  const removeButton = document.createElement("button");
+  removeButton.className = "remove-choice-button";
+  removeButton.type = "button";
+  removeButton.setAttribute("aria-label", "ရွေးချယ်စရာကို ဖယ်ရန်");
+  removeButton.textContent = "×";
+  removeButton.addEventListener("click", () => {
+    row.remove();
+    updateEditTotalStock();
+  });
+  row.append(fields, removeButton);
+  editChoiceList.appendChild(row);
+  updateEditTotalStock();
+}
+
+function openProductEditor(product) {
+  if (typeof product.id !== "string") return;
+  revokeEditPreviewUrls();
+  activeEditingProduct = product;
+  activeEditThumbnailFile = null;
+  editDetailMedia = (Array.isArray(product.detailMediaUrls)
+    ? product.detailMediaUrls
+    : []
+  ).map((media) => ({
+    url: typeof media.url === "string" ? media.url : "",
+    type: typeof media.type === "string" ? media.type : "image/jpeg",
+    name: typeof media.name === "string" ? media.name : "",
+    file: null,
+  }));
+  editItemName.value = product.name || "";
+  editItemDescription.value = product.meta || "";
+  editItemCategory.value = product.category || "";
+  editChoiceList.replaceChildren();
+  normalizeChoiceItems(product.choices).forEach((choice) =>
+    addEditChoiceRow(choice),
+  );
+  const promotion = product.promotion;
+  editPromotionSection.hidden = !promotion || typeof promotion !== "object";
+  if (!editPromotionSection.hidden) {
+    const rawExpiry =
+      promotion.expiresAt && typeof promotion.expiresAt.toDate === "function"
+        ? promotion.expiresAt.toDate()
+        : promotion.expiresAt instanceof Date
+          ? promotion.expiresAt
+          : new Date(promotion.expiresAt);
+    editPromotionName.value = promotion.name || "";
+    editPromotionPercent.value = String(promotion.percent || "");
+    editPromotionExpiry.value = Number.isNaN(rawExpiry.getTime())
+      ? ""
+      : localDateInputValue(rawExpiry);
+  } else {
+    editPromotionName.value = "";
+    editPromotionPercent.value = "";
+    editPromotionExpiry.value = "";
+  }
+  editThumbnailInput.value = "";
+  editDetailPhotoInput.value = "";
+  productEditFeedback.textContent = "";
+  productEditForm.hidden = false;
+  renderEditThumbnail();
+  renderEditDetailMedia();
+  productEditForm.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  editItemName.focus({ preventScroll: true });
+}
+
+function discardProductEditor() {
+  revokeEditPreviewUrls();
+  activeEditingProduct = null;
+  activeEditThumbnailFile = null;
+  editDetailMedia = [];
+  pendingEditDetailIndex = -1;
+  editThumbnailInput.value = "";
+  editDetailPhotoInput.value = "";
+  editChoiceList.replaceChildren();
+  editTotalStock.textContent = "0";
+  editPromotionSection.hidden = true;
+  editPromotionName.value = "";
+  editPromotionPercent.value = "";
+  editPromotionExpiry.value = "";
+  productEditFeedback.textContent = "";
+  productEditForm.reset();
+  productEditForm.hidden = true;
 }
 
 function syncProductDeleteSelection() {
@@ -1395,6 +1682,252 @@ thumbnailDropzone.addEventListener("drop", (event) => {
   if (file) setThumbnail(file);
 });
 addChoiceButton.addEventListener("click", addChoiceRow);
+showProductEdit.addEventListener("click", () => {
+  const open = productEditPanel.hidden;
+  productEditPanel.hidden = !open;
+  showProductEdit.setAttribute("aria-expanded", String(open));
+  if (open) renderProductEditList();
+});
+editThumbnailInput.addEventListener("change", () => {
+  const file = editThumbnailInput.files && editThumbnailInput.files[0];
+  if (!file) return;
+  editThumbnailInput.value = "";
+  if (!file.type.startsWith("image/")) {
+    productEditFeedback.textContent = "အဓိကပုံသည် ဓာတ်ပုံ ဖြစ်ရပါမည်။";
+    editThumbnailInput.value = "";
+    return;
+  }
+  activeEditThumbnailFile = file;
+  productEditFeedback.textContent = "";
+  renderEditThumbnail();
+});
+editDetailPhotoInput.addEventListener("change", () => {
+  const file = editDetailPhotoInput.files && editDetailPhotoInput.files[0];
+  const index = pendingEditDetailIndex;
+  pendingEditDetailIndex = -1;
+  editDetailPhotoInput.value = "";
+  if (!file || index < 0 || !editDetailMedia[index]) return;
+  if (!file.type.startsWith("image/")) {
+    productEditFeedback.textContent = "Detail Photos တွင် ဓာတ်ပုံသာ အသုံးပြုပါ။";
+    return;
+  }
+  editDetailMedia[index] = {
+    ...editDetailMedia[index],
+    name: file.name,
+    file,
+  };
+  productEditFeedback.textContent = "";
+  renderEditDetailMedia();
+});
+discardProductEdit.addEventListener("click", discardProductEditor);
+addEditChoiceButton.addEventListener("click", () => addEditChoiceRow());
+productEditForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!adminUnlocked || !activeEditingProduct) return;
+
+  saveProductEdit.disabled = true;
+  productEditFeedback.textContent = "သိမ်းနေသည်...";
+  showLoading("Saving...");
+  try {
+    await window.firebaseReady;
+    const product = activeEditingProduct;
+    const choices = Array.from(
+      editChoiceList.querySelectorAll(".choice-row"),
+    ).map((row) => {
+      const stockInput = row.querySelector(".choice-stock-input");
+      return {
+        label: row.querySelector(".choice-input").value.trim(),
+        stock: stockInput.value.trim() ? Number(stockInput.value) : NaN,
+      };
+    });
+    if (
+      choices.length === 0 ||
+      choices.some(
+        (choice) =>
+          !choice.label ||
+          !Number.isInteger(choice.stock) ||
+          choice.stock < 0,
+      )
+    ) {
+      throw new Error("INVALID_CHOICES");
+    }
+    const choiceLabels = choices.map((choice) => choice.label.toLowerCase());
+    if (new Set(choiceLabels).size !== choices.length)
+      throw new Error("DUPLICATE_CHOICES");
+
+    const stock = choices.reduce((total, choice) => total + choice.stock, 0);
+    const update = {
+      name: editItemName.value.trim(),
+      meta: editItemDescription.value.trim(),
+      category: editItemCategory.value,
+      choices,
+      stock,
+    };
+    const promotion = product.promotion;
+    let updatedPromotion = null;
+    if (
+      promotion &&
+      typeof promotion === "object" &&
+      !editPromotionSection.hidden
+    ) {
+      const name = editPromotionName.value.trim();
+      const percent = Number(editPromotionPercent.value);
+      const expiryValue = editPromotionExpiry.value;
+      const expiryParts = expiryValue.split("-").map(Number);
+      const expiresAt = new Date(
+        expiryParts[0],
+        expiryParts[1] - 1,
+        expiryParts[2],
+        23,
+        59,
+        59,
+        999,
+      );
+      if (!name || !editPromotionExpiry.value || !editPromotionPercent.value)
+        throw new Error("INVALID_PROMOTION");
+      if (!Number.isInteger(percent) || percent < 1 || percent > 99)
+        throw new Error("INVALID_PROMOTION_PERCENT");
+      if (
+        Number.isNaN(expiresAt.getTime()) ||
+        (expiresAt.getTime() < Date.now() &&
+          expiryValue !==
+            localDateInputValue(
+              promotion.expiresAt &&
+                typeof promotion.expiresAt.toDate === "function"
+                ? promotion.expiresAt.toDate()
+                : promotion.expiresAt instanceof Date
+                  ? promotion.expiresAt
+                  : new Date(promotion.expiresAt),
+            ))
+      )
+        throw new Error("INVALID_PROMOTION_DATE");
+      updatedPromotion = {
+        name,
+        percent,
+        expiresAt: firebase.firestore.Timestamp.fromDate(expiresAt),
+      };
+      update.promotion = updatedPromotion;
+    }
+
+    const newImageCount =
+      Number(Boolean(activeEditThumbnailFile)) +
+      editDetailMedia.filter((media) => media.file).length;
+    const retainedMediaLength =
+      (activeEditThumbnailFile ? 0 : String(product.image || "").length) +
+      editDetailMedia.reduce(
+        (total, media) => total + (media.file ? 0 : media.url.length),
+        0,
+      );
+    const mediaBudget = 850000 - retainedMediaLength;
+    if (newImageCount > 0 && mediaBudget < newImageCount * 10000)
+      throw new Error("IMAGE_SIZE_LIMIT");
+    const perImageBudget =
+      newImageCount > 0 ? Math.floor(mediaBudget / newImageCount) : Infinity;
+
+    const detailMediaUrls = await Promise.all(
+      editDetailMedia.map(async (media) => ({
+        url: media.file
+          ? await imageFileToDataUrl(
+              media.file,
+              1000,
+              0.72,
+              perImageBudget,
+            )
+          : media.url,
+        type: "image/jpeg",
+        name: media.name,
+      })),
+    );
+    if (activeEditThumbnailFile) {
+      update.image = await imageFileToDataUrl(
+        activeEditThumbnailFile,
+        1000,
+        0.72,
+        perImageBudget,
+      );
+      update.mediaType = "image";
+    }
+    update.detailMediaUrls = detailMediaUrls;
+    update.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    if (stock <= 0) {
+      update.stockOutAt = firebase.firestore.FieldValue.serverTimestamp();
+      update.deleteAt = firebase.firestore.Timestamp.fromMillis(
+        Date.now() + STOCK_OUT_GRACE_MS,
+      );
+    } else {
+      update.stockOutAt = firebase.firestore.FieldValue.delete();
+      update.deleteAt = firebase.firestore.FieldValue.delete();
+    }
+
+    await firebase
+      .firestore()
+      .collection("products")
+      .doc(product.id)
+      .update(update);
+    Object.assign(product, update, {
+      detailMediaUrls: detailMediaUrls.map((media) => ({ ...media })),
+      ...(updatedPromotion
+        ? {
+            promotion: {
+              name: updatedPromotion.name,
+              percent: updatedPromotion.percent,
+              expiresAt: updatedPromotion.expiresAt.toDate(),
+            },
+          }
+        : {}),
+    });
+    if (stock > 0) {
+      delete product.stockOutAt;
+      delete product.deleteAt;
+      if (stockOutCleanupTimers.has(product.id)) {
+        clearTimeout(stockOutCleanupTimers.get(product.id));
+        stockOutCleanupTimers.delete(product.id);
+      }
+    } else {
+      product.stockOutAt = new Date();
+      product.deleteAt = new Date(Date.now() + STOCK_OUT_GRACE_MS);
+      scheduleStockOutCleanup(product);
+    }
+    activeEditThumbnailFile = null;
+    editDetailMedia = detailMediaUrls.map((media) => ({ ...media, file: null }));
+    editThumbnailInput.value = "";
+    renderEditThumbnail();
+    renderEditDetailMedia();
+    renderProducts();
+    renderProductDeleteOptions();
+    renderProductEditList();
+    productEditFeedback.textContent = "Changes saved.";
+  } catch (error) {
+    console.error("Could not save product changes:", error);
+    if (error.message === "INVALID_CHOICES")
+      productEditFeedback.textContent =
+        "ရွေးချယ်စရာ အနည်းဆုံးတစ်ခုနှင့် မှန်ကန်သော လက်ကျန်အရေအတွက် ထည့်ပါ။";
+    else if (error.message === "DUPLICATE_CHOICES")
+      productEditFeedback.textContent =
+        "ရွေးချယ်စရာအမည်များ ထပ်နေပါသည်။ တစ်ခုချင်းစီ မတူညီအောင် ပြင်ပါ။";
+    else if (error.message === "INVALID_PROMOTION")
+      productEditFeedback.textContent =
+        "Promotion name၊ Discount percent နှင့် Expiry Date အားလုံးဖြည့်ပါ။";
+    else if (error.message === "INVALID_PROMOTION_PERCENT")
+      productEditFeedback.textContent =
+        "Discount percent ကို ၁ မှ ၉၉ အတွင်းရှိ ကိန်းပြည့်အဖြစ် ထည့်ပါ။";
+    else if (error.message === "INVALID_PROMOTION_DATE")
+      productEditFeedback.textContent =
+        "Promotion Expiry Date သည် ယနေ့ သို့မဟုတ် အနာဂတ်ရက် ဖြစ်ရပါမည်။";
+    else if (error.message === "IMAGE_SIZE_LIMIT")
+      productEditFeedback.textContent =
+        "ပုံများ၏ စုစုပေါင်းအရွယ်အစား များနေပါသည်။ ပုံအသစ်အရွယ်အစား သို့မဟုတ် အရေအတွက်ကို လျှော့ပါ။";
+    else if (error.code === "permission-denied")
+      productEditFeedback.textContent =
+        "Firebase က ပြင်ဆင်ခွင့်ကို ပယ်ချလိုက်ပါသည်။ ခွင့်ပြုချက်နှင့် အင်တာနက်ကို စစ်ဆေးပါ။";
+    else
+      productEditFeedback.textContent =
+        "ပြင်ဆင်မှုကို သိမ်း၍မရပါ။ အင်တာနက်ကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။";
+  } finally {
+    hideLoading();
+    saveProductEdit.disabled = false;
+  }
+});
 showProductDelete.addEventListener("click", () => {
   const open = productDeletePanel.hidden;
   productDeletePanel.hidden = !open;
@@ -1481,10 +2014,16 @@ confirmProductDelete.addEventListener("click", async () => {
       }
     });
     products = products.filter((product) => !deletedIds.has(product.id));
+    if (
+      activeEditingProduct &&
+      deletedIds.has(activeEditingProduct.id)
+    )
+      discardProductEditor();
     deletedIds.forEach((id) => removeProductFromCart(id));
     renderProducts();
     renderCart();
     renderProductDeleteOptions();
+    renderProductEditList();
     if (failedProducts.length > 0) {
       productDeleteFeedback.textContent =
         `${deletedIds.size} ခု ဖျက်ပြီး၊ ${failedProducts.length} ခု ဖျက်၍မရပါ။ ထပ်ကြိုးစားပါ။`;
@@ -1669,6 +2208,7 @@ productUploadForm.addEventListener("submit", async (event) => {
     scheduleStockOutCleanup(newProduct);
     renderProducts();
     renderProductDeleteOptions();
+    renderProductEditList();
     uploadFeedback.textContent = "ပစ္စည်းတင်ပြီးပါပြီ။";
     productUploadForm.reset();
     syncDiscountFields();
@@ -1734,7 +2274,10 @@ async function loadSavedProducts() {
     ];
     savedProducts.forEach(scheduleStockOutCleanup);
     renderProducts();
-    if (!controlPanel.hidden) renderProductDeleteOptions();
+    if (!controlPanel.hidden) {
+      renderProductDeleteOptions();
+      renderProductEditList();
+    }
   } catch (error) {
     console.error("Could not load saved products:", error);
   } finally {
