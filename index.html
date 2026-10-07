@@ -192,6 +192,150 @@
             </div>
           </div>
         </section>
+        <section class="product-edit-section" aria-label="Edit my products">
+          <button
+            class="product-edit-toggle"
+            id="showProductEdit"
+            type="button"
+            aria-expanded="false"
+            aria-controls="productEditPanel"
+          >
+            Edit my products
+          </button>
+          <div class="product-edit-panel" id="productEditPanel" hidden>
+            <div
+              class="product-edit-list"
+              id="productEditList"
+              aria-label="ပစ္စည်းများ"
+            ></div>
+            <form
+              class="product-upload-form product-edit-form"
+              id="productEditForm"
+              hidden
+            >
+              <label
+                >ပစ္စည်းအမည်<input
+                  id="editItemName"
+                  type="text"
+                  placeholder="ပစ္စည်းအမည်"
+                  required
+              /></label>
+              <label
+                >ဖော်ပြချက်<textarea
+                  id="editItemDescription"
+                  placeholder="ဖော်ပြချက်ထည့်ပါ"
+                  rows="3"
+                  required
+                ></textarea>
+              </label>
+              <label
+                >အမျိုးအစား<select id="editItemCategory" required>
+                  <option value="" selected disabled>အမျိုးအစားရွေးပါ</option>
+                  <option>ခေတ်စား</option>
+                  <option>အထူးစျေးနှုန်း</option>
+                  <option>အင်္ကျီ</option>
+                  <option>ဘောင်းဘီ</option>
+                  <option>စကတ်</option>
+                  <option>ဂါဝန်</option>
+                  <option>1 SET</option>
+                  <option>ဂျင်းထည်</option>
+                  <option>တီရှပ်</option>
+                  <option>ရှပ်အင်္ကျီ</option>
+                  <option>စပန့်</option>
+                  <option>အမျိုးသမီးအင်္ကျီ</option>
+                  <option>အပေါ်ထပ်</option>
+                  <option>အတွင်းဝတ်</option>
+                  <option>အသုံးအဆောင်</option>
+                  <option>အမျိုးသားဝတ်</option>
+                  <option>ကချင်ထည်</option>
+                  <option>ပါတိတ်</option>
+                  <option>ဇင်းမယ်</option>
+                  <option>ချိတ်</option>
+                  <option>တမူး</option>
+                </select></label
+              >
+              <div class="admin-media-section">
+                <p class="admin-field-title">အဓိကပုံ</p>
+                <div class="edit-thumbnail-box" id="editThumbnailBox"></div>
+                <input
+                  class="edit-file-input"
+                  id="editThumbnailInput"
+                  type="file"
+                  accept="image/*"
+                />
+              </div>
+              <div class="admin-media-section">
+                <p class="admin-field-title">Detail Photos</p>
+                <div class="edit-detail-media" id="editDetailMedia"></div>
+              </div>
+              <input
+                class="edit-file-input"
+                id="editDetailPhotoInput"
+                type="file"
+                accept="image/*"
+              />
+              <div class="admin-media-section">
+                <p class="admin-field-title">ရွေးချယ်စရာနှင့် လက်ကျန်</p>
+                <div class="choice-list" id="editChoiceList"></div>
+                <button
+                  class="add-choice-button"
+                  id="addEditChoiceButton"
+                  type="button"
+                >
+                  <span>+</span> ရွေးချယ်စရာထည့်ရန်
+                </button>
+                <p class="product-edit-stock-total">
+                  စုစုပေါင်းလက်ကျန်: <strong id="editTotalStock">0</strong>
+                </p>
+              </div>
+              <section
+                class="discount-settings product-edit-promotion"
+                id="editPromotionSection"
+                aria-label="Promotion"
+                hidden
+              >
+                <p class="admin-field-title">Promotion</p>
+                <div class="discount-fields">
+                  <label
+                    >Promotion name
+                    <input
+                      id="editPromotionName"
+                      type="text"
+                      placeholder="Promotion name"
+                      autocomplete="off"
+                    />
+                  </label>
+                  <label
+                    >Discount percent (%)
+                    <input
+                      id="editPromotionPercent"
+                      type="number"
+                      min="1"
+                      max="99"
+                      step="1"
+                      placeholder="50"
+                      inputmode="numeric"
+                    />
+                  </label>
+                  <label
+                    >Promotion Period
+                    <span class="discount-date-label">Expiry Date</span>
+                    <input id="editPromotionExpiry" type="date" />
+                  </label>
+                </div>
+              </section>
+              <p class="upload-feedback" id="productEditFeedback" role="status"></p>
+              <div class="product-edit-actions">
+                <button class="upload-product-button" id="saveProductEdit" type="submit">
+                  Save
+                </button>
+                <button class="product-edit-discard" id="discardProductEdit" type="button">
+                  Discard
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
         <form class="product-upload-form" id="productUploadForm">
           <label
             >ပစ္စည်းအမည်<input
