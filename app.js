@@ -146,12 +146,13 @@ function isStockOut(product) {
   );
 }
 function renderCategories() {
-  categoryTabs.innerHTML = categories
-    .map(
+  categoryTabs.innerHTML = [
+    `<button class="category-tab ${activeCategory ? "" : "active"}" data-category="" role="tab" aria-selected="${!activeCategory}">All</button>`,
+    ...categories.map(
       (category) =>
         `<button class="category-tab ${category === activeCategory ? "active" : ""}" data-category="${category}" role="tab" aria-selected="${category === activeCategory}">${category}</button>`,
-    )
-    .join("");
+    ),
+  ].join("");
 }
 function visibleProducts() {
   return products
@@ -923,6 +924,12 @@ submitPaymentButton.addEventListener("click", async () => {
 categoryTabs.addEventListener("click", (event) => {
   const button = event.target.closest("[data-category]");
   if (!button) return;
+  if (!button.dataset.category) {
+    activeCategory = null;
+    renderCategories();
+    renderProducts();
+    return;
+  }
   activeCategory =
     activeCategory === button.dataset.category ? null : button.dataset.category;
   renderCategories();
