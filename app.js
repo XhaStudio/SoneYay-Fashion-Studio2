@@ -440,6 +440,16 @@ function notify(msg) {
   }
 }
 
+function isNetworkError(err) {
+  return (
+    !navigator.onLine ||
+    (err instanceof Error &&
+      (err.name === "AbortError" ||
+        err instanceof TypeError ||
+        ["unavailable", "deadline-exceeded"].includes(err.code)))
+  );
+}
+
 function telegramUser() {
   const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
   return user
@@ -913,7 +923,9 @@ submitPaymentButton.addEventListener("click", async () => {
     notify(
       err.message.includes("stock is no longer available")
         ? "လက်ကျန် ပြောင်းလဲသွားပါပြီ။ ပစ္စည်းအရေအတွက်ကို ပြန်စစ်ပြီး ထပ်မှာယူပါ။"
-        : "မှာယူမှု ပို့၍မရပါ — ကွန်ရက်ကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။",
+        : isNetworkError(err)
+          ? "Please check your internet!!"
+          : "မှာယူမှု ပို့၍မရပါ။ ထပ်မံကြိုးစားပါ။",
     );
   } finally {
     submitPaymentButton.disabled = false;
