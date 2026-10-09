@@ -71,7 +71,7 @@ const searchInput = $("#searchInput"),
 const loadingScreen = $("#loadingScreen"),
   loadingMessage = $("#loadingMessage");
 const money = (value) => `${value.toLocaleString("en-US")} ကျပ်`;
-const STOCK_OUT_GRACE_MS = 4 * 60 * 60 * 1000;
+const STOCK_OUT_GRACE_MS = 8 * 60 * 60 * 1000;
 const stockOutCleanupTimers = new Map();
 
 function promotionDetails(product) {
