@@ -208,8 +208,8 @@ const paymentAccounts: Record<
   PaymentMethodId,
   { label: string; number: string }
 > = {
-  kbzpay: { label: "KBZPay", number: "09-750 123 456" },
-  wavemoney: { label: "WaveMoney", number: "09-961 234 567" },
+  kbzpay: { label: "KBZPay", number: "09440800800" },
+  wavemoney: { label: "WaveMoney", number: "09440800800" },
 };
 let selectedPaymentMethod: PaymentMethodId = "kbzpay";
 let selectedScreenshot: File | null = null;
