@@ -431,6 +431,7 @@ if (tg) {
 // Bot server's public HTTPS URL, now hosted on Render.
 // Browsers block http:// calls from this https:// page, so this must stay https://.
 const API_BASE_URL = "https://soneyay-fashion-studio3-cix5.onrender.com";
+const TELEGRAM_BOT_URL = "https://t.me/SoneYayFashionStudio_bot";
 
 function notify(msg) {
   console.log("[notify]", msg);
@@ -884,9 +885,7 @@ submitPaymentButton.addEventListener("click", async () => {
 
   const user = telegramUser();
   if (!user) {
-    notify(
-      "Telegram App ထဲမှသာ မှာယူ၍ရပါမည်။ Telegram ထဲတွင် ဤဆိုင်ကို ပြန်ဖွင့်ပေးပါ။",
-    );
+    window.location.assign(TELEGRAM_BOT_URL);
     return;
   }
 
