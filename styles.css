@@ -2006,6 +2006,15 @@ h2 {
 .payment-account-label strong {
   color: var(--ink);
 }
+.payment-account-holder {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0 0 4px;
+}
+.payment-account-holder strong {
+  color: var(--ink);
+  font-weight: 600;
+}
 .payment-account-number {
   font-family: var(--serif);
   font-size: 17px;
