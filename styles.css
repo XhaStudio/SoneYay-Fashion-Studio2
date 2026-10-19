@@ -1216,6 +1216,24 @@ h1 em {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   padding-top: 32px;
 }
+.product-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 28px 0 12px;
+}
+.product-load-more[hidden] {
+  display: none;
+}
+.load-more-button {
+  background: var(--ink);
+  border-radius: 999px;
+  color: white;
+  font-size: 12px;
+  padding: 12px 22px;
+}
+.load-more-button:hover {
+  background: var(--coral);
+}
 .product-card {
   min-width: 0;
 }
