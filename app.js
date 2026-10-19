@@ -63,6 +63,10 @@ const categoryTabs = $("#categoryTabs"),
   catalog = $("#catalog"),
   emptyState = $("#emptyState"),
   template = $("#productTemplate");
+const PRODUCTS_PER_BATCH = 10;
+let visibleProductLimit = PRODUCTS_PER_BATCH;
+const productLoadMore = $("#productLoadMore"),
+  loadMoreProductsButton = $("#loadMoreProducts");
 const searchInput = $("#searchInput"),
   sortSelect = $("#sortSelect"),
   cartDrawer = $("#cartDrawer"),
@@ -109,30 +113,6 @@ function showLoading(message) {
 function hideLoading() {
   loadingScreen.classList.add("is-hidden");
 }
-function preloadProductImages(productList) {
-  const imageUrls = productList
-    .flatMap((product) => [
-      product.image,
-      ...(Array.isArray(product.detailMediaUrls)
-        ? product.detailMediaUrls.map((media) => media.url)
-        : []),
-    ])
-    .filter(
-      (url, index, urls) =>
-        typeof url === "string" && url && urls.indexOf(url) === index,
-    );
-  return Promise.all(
-    imageUrls.map(
-      (url) =>
-        new Promise((resolve) => {
-          const image = new Image();
-          image.onload = resolve;
-          image.onerror = resolve;
-          image.src = url;
-        }),
-    ),
-  );
-}
 function hasStock(product) {
   if (!Object.prototype.hasOwnProperty.call(product, "stock")) return true;
   return (
@@ -176,11 +156,14 @@ function visibleProducts() {
       return 0;
     });
 }
-function renderProducts() {
+function renderProducts(append = false) {
   const items = visibleProducts();
-  catalog.innerHTML = "";
+  if (!append) catalog.innerHTML = "";
   emptyState.hidden = items.length > 0;
-  items.forEach((product) => {
+  const firstIndex = append
+    ? Math.min(items.length, visibleProductLimit - PRODUCTS_PER_BATCH)
+    : 0;
+  items.slice(firstIndex, visibleProductLimit).forEach((product) => {
     const card = template.content.cloneNode(true),
       quantity = productCartQty(product.id);
     const image = card.querySelector(".product-image");
@@ -192,6 +175,7 @@ function renderProducts() {
     } else if (product.image) {
       image.src = product.image;
       image.alt = product.name;
+      image.loading = "lazy";
     } else {
       image.hidden = true;
       video.hidden = true;
@@ -280,6 +264,30 @@ function renderProducts() {
     card.querySelector(".increase").addEventListener("click", addFromCard);
     catalog.appendChild(card);
   });
+  productLoadMore.hidden = visibleProductLimit >= items.length;
+  if (productLoadObserver) {
+    productLoadObserver.unobserve(productLoadMore);
+    if (!productLoadMore.hidden) productLoadObserver.observe(productLoadMore);
+  }
+}
+function loadNextProductBatch() {
+  if (visibleProductLimit >= visibleProducts().length) return;
+  visibleProductLimit += PRODUCTS_PER_BATCH;
+  renderProducts(true);
+}
+const productLoadObserver =
+  typeof IntersectionObserver === "undefined"
+    ? null
+    : new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting))
+            loadNextProductBatch();
+        },
+        { rootMargin: "300px 0px" },
+      );
+loadMoreProductsButton.addEventListener("click", loadNextProductBatch);
+function resetVisibleProducts() {
+  visibleProductLimit = PRODUCTS_PER_BATCH;
 }
 async function updateQuantity(id, change, choice = "") {
   const key = cartKey(id, choice);
@@ -940,12 +948,14 @@ categoryTabs.addEventListener("click", (event) => {
   if (!button.dataset.category) {
     activeCategory = null;
     renderCategories();
+    resetVisibleProducts();
     renderProducts();
     return;
   }
   activeCategory =
     activeCategory === button.dataset.category ? null : button.dataset.category;
   renderCategories();
+  resetVisibleProducts();
   renderProducts();
 });
 function syncCategorySlider() {
@@ -963,9 +973,13 @@ categoryTabs.addEventListener("scroll", syncCategorySlider, { passive: true });
 window.addEventListener("resize", syncCategorySlider);
 searchInput.addEventListener("input", () => {
   searchTerm = searchInput.value;
+  resetVisibleProducts();
   renderProducts();
 });
-sortSelect.addEventListener("change", renderProducts);
+sortSelect.addEventListener("change", () => {
+  resetVisibleProducts();
+  renderProducts();
+});
 $("#bagButton").addEventListener("click", () => setDrawer(true));
 $("#viewBag").addEventListener("click", () => setDrawer(true));
 $("#closeBag").addEventListener("click", () => setDrawer(false));
@@ -2284,7 +2298,6 @@ async function loadSavedProducts() {
   try {
     const savedProducts =
       await window.firebaseImageLoader.loadProducts("products");
-    await preloadProductImages(savedProducts);
     products = [
       ...savedProducts,
       ...products.filter(
